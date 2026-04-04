@@ -4,7 +4,7 @@ from typing import Dict, List
 from config import Config
 from data_loader import MathDataLoader
 from enhanced_data_processor import EnhancedDataProcessor
-from bert_trainer import BERTTrainer, prepare_training_data
+from bert_trainer_v2 import AdvancedBERTTrainer as BERTTrainer
 
 class MathKnowledgeExtractionPipeline:
     """初中数学学科知识抽取完整管道"""
@@ -12,7 +12,7 @@ class MathKnowledgeExtractionPipeline:
     def __init__(self):
         self.data_loader = MathDataLoader()
         self.data_processor = EnhancedDataProcessor()
-        self.bert_trainer = BERTTrainer()
+        self.bert_trainer = BERTTrainer()  # AdvancedBERTTrainer
         
     def run_full_pipeline(self, train_bert: bool = True):
         """运行完整的数据处理和训练管道"""

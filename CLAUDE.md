@@ -3,27 +3,36 @@
 ## Architecture Overview
 
 This project builds a **middle school math knowledge graph** using a **Hybrid Pipeline**:
-- **Local BERT** for entity extraction (fast, offline)
-- **Cloud LLM API** for relation extraction (high accuracy)
+- **Local BERT** (BERT+BiLSTM+CRF) for entity extraction (fast, offline)
+- **Cloud LLM API** (DeepSeek via KGGen) for relation extraction (high accuracy)
 - **Neo4j** graph database for storage and querying
+- **Flask** web app for interactive visualization
 
 ## Core Modules
 
 | File | Role |
 |------|------|
-| `src/entity_recognizer_enhanced.py` | Local BERT-based entity recognition |
-| `src/kggen_client.py` | Cloud LLM API client for knowledge graph generation |
-| `src/relation_extractor_kggen.py` | LLM-powered relation extraction |
-| `src/neo4j_manager.py` | Neo4j database CRUD operations |
-| `src/main_unified_pipeline.py` | Central pipeline orchestrator |
+| `config.py` | Central configuration (env vars via `.env`) |
+| `entity_recognizer_enhanced.py` | BERT+CRF char-level entity recognition |
+| `entity_extractor_kggen.py` | KGGen-enhanced entity extraction (ensemble) |
+| `kggen_client.py` | Cloud LLM API client (DeepSeek/KGGen) |
+| `relation_extractor_kggen.py` | LLM-powered relation extraction |
+| `neo4j_manager.py` | Neo4j database CRUD operations (py2neo) |
+| `main_kggen_pipeline.py` | Central pipeline orchestrator |
+| `knowledge_graph_builder_kggen.py` | Knowledge graph builder |
+| `bert_trainer_v2.py` | BERT+BiLSTM+CRF trainer (BIOES labels, augmentation) |
+| `data_loader.py` | Math textbook data loading |
+| `enhanced_data_processor.py` | Text cleaning, segmentation, NER data prep |
+| `app.py` | Flask web app for graph visualization |
+| `grade7_builder.py` | Grade 7 specific knowledge graph builder |
 
 ## Data Flow
 
 ```
-Raw Text (textbook content)
+Raw Text (textbook .docx files in data/)
     |
     v
-[entity_recognizer_enhanced.py]  -- Local BERT extracts math entities
+[entity_recognizer_enhanced.py]  -- Local BERT+CRF extracts math entities
     |                                (concepts, formulas, theorems, etc.)
     v
 [relation_extractor_kggen.py]    -- Cloud LLM identifies relationships
@@ -32,27 +41,22 @@ Raw Text (textbook content)
 [neo4j_manager.py]               -- Stores (entity, relation, entity) triples
     |                                in Neo4j graph database
     v
-Neo4j Knowledge Graph
+[app.py]                         -- Flask web UI for visualization
 ```
 
-## Key Design Decisions
+## Configuration
 
-1. **Hybrid approach**: BERT handles entity extraction locally (fast, no API cost); cloud LLM handles the harder task of relation extraction (higher accuracy).
-2. **JSON as interchange format**: Entities are passed between modules as JSON objects.
-3. **Pipeline orchestration**: `main_unified_pipeline.py` coordinates the entire flow.
+All secrets and paths are read from environment variables. Copy `.env.example` to `.env` and fill in your values:
+- `KGGEN_API_KEY` - API key for DeepSeek/KGGen
+- `NEO4J_PASSWORD` - Neo4j database password
+- `BERT_MODEL_PATH` - Path to BERT model (default: bert-base-chinese)
+- `DATA_DIR` - Path to textbook data directory
 
 ## Development Notes
 
-- Place test input files in `data/`
-- Configuration (API keys, Neo4j credentials) goes in `config/`
-- All core source code lives in `src/`
-
-## Next Steps (Pending Implementation)
-
-- [ ] Complete entity_recognizer_enhanced.py with BERT model loading
-- [ ] Implement kggen_client.py API client
-- [ ] Build relation_extractor_kggen.py
-- [ ] Set up neo4j_manager.py with full CRUD + query support
-- [ ] Wire everything together in main_unified_pipeline.py
-- [ ] Add test script for end-to-end pipeline validation
-- [ ] Add visualization (Pyvis/Dash) for graph display
+- Place textbook data files in `data/`
+- All core source code lives in the project root
+- `src/` contains compatibility re-exports for the original module layout
+- Run `pip install -r requirements.txt` for all dependencies
+- Use `python run.py web` to start the Flask visualization server
+- Use `python main_kggen_pipeline.py --mode hybrid` to run the full pipeline

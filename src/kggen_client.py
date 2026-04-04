@@ -1,19 +1,5 @@
-"""
-KGGen Client - Cloud LLM API client for knowledge graph generation.
-
-Handles communication with the cloud LLM API to extract relationships
-between math entities. Manages API authentication, request formatting,
-response parsing, and error handling.
-
-Expected usage:
-    client = KGGenClient(api_key="...", base_url="...")
-    response = client.extract_relations(text, entities)
-"""
-
-# TODO: Implement API client
-# Key components needed:
-# - API authentication and configuration
-# - Request formatting (prompt engineering for relation extraction)
-# - Response parsing (extract structured relation triples from LLM output)
-# - Rate limiting and retry logic
-# - Error handling for API failures
+# 兼容性导入：实际实现在项目根目录
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from kggen_client import *  # noqa: F401,F403
+from kggen_client import KGGenClient  # noqa: F401

@@ -8,8 +8,8 @@ import re
 from typing import List, Dict
 from tqdm import tqdm
 from data_loader import MathDataLoader
-from entity_recognizer import EntityRecognizer
-from relation_extractor import RelationExtractor
+from entity_recognizer_enhanced import EnhancedEntityRecognizer as EntityRecognizer
+from relation_extractor_kggen import KGGenEnhancedRelationExtractor as RelationExtractor
 from neo4j_manager import Neo4jManager
 from config import Config
 from performance_optimizer import PerformanceMonitor, time_it

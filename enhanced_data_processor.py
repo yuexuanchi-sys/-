@@ -83,7 +83,8 @@ class EnhancedDataProcessor:
     
     def _load_stopwords(self) -> set:
         """加载停用词表"""
-        stopwords_path = r'D:\hit_stopwords.txt'
+        # 优先查找项目根目录下的 stopwords.txt
+        stopwords_path = os.path.join(os.path.dirname(__file__), 'stopwords.txt')
         stopwords = set()
         if os.path.exists(stopwords_path):
             with open(stopwords_path, 'r', encoding='utf-8') as f:

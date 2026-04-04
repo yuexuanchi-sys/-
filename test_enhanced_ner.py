@@ -10,8 +10,9 @@ import torch
 import pandas as pd
 from enhanced_data_processor import EnhancedDataProcessor
 from data_loader import MathDataLoader
-from bert_trainer_enhanced import EnhancedBERTTrainer, prepare_char_level_training_data
+from bert_trainer_v2 import AdvancedBERTTrainer as EnhancedBERTTrainer
 from entity_recognizer_enhanced import EnhancedEntityRecognizer
+from config import Config
 import shutil
 
 def create_test_data():
@@ -21,7 +22,7 @@ def create_test_data():
     # 指定要使用的数据文件：只用7.1.docx和7.2.docx
     data_files = ['7.11.docx', '8.11.docx']
     
-    data_dir = "D:\\数据"
+    data_dir = Config.DATA_DIR
     
     # 详细检查数据文件是否存在
     print(f"检查数据目录: {data_dir}")
@@ -435,11 +436,11 @@ def test_entity_recognition_on_files(model_dir, files_to_test):
         
         # 使用数据加载器读取指定文件
         loader = MathDataLoader()
-        loader.data_dir = "D:\\数据"  # 设置原始数据目录
+        loader.data_dir = Config.DATA_DIR  # 设置原始数据目录
         
         for file_name in files_to_test:
             print(f"\n处理文件: {file_name}")
-            file_path = os.path.join("D:\\数据", file_name)
+            file_path = os.path.join(Config.DATA_DIR, file_name)
             
             if not os.path.exists(file_path):
                 print(f"文件不存在: {file_path}")

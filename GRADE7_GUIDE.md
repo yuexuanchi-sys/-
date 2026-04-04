@@ -75,7 +75,7 @@ python neo4j_importer.py
 
 主要配置在 `config.py` 文件中：
 
-- `DATA_DIR = "D:\\数据"` - 数据文件目录
+- `DATA_DIR` - 数据文件目录（通过 .env 文件中的 DATA_DIR 环境变量配置）
 - `OUTPUT_DIR = "./output"` - 输出目录
 - Neo4j数据库连接配置（可选）
 

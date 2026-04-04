@@ -88,7 +88,7 @@ class KGGenClient:
         # 提取实体并附带位置信息
         for entity_name in graph.entities:
             # 过滤掉只有1-2个字母的垃圾变量 (后处理清洗)
-            if len(entity_name) <= 2 and entity_name.encode('utf-8').isalpha():
+            if len(entity_name) <= 2 and entity_name.isascii() and entity_name.isalpha():
                 continue
                 
             start_pos = original_text.find(entity_name)
@@ -110,8 +110,8 @@ class KGGenClient:
 
         # 提取关系
         for subj, edge, obj in graph.relations:
-            if len(subj) <= 2 and subj.encode('utf-8').isalpha(): continue
-            if len(obj) <= 2 and obj.encode('utf-8').isalpha(): continue
+            if len(subj) <= 2 and subj.isascii() and subj.isalpha(): continue
+            if len(obj) <= 2 and obj.isascii() and obj.isalpha(): continue
             
             result["relations"].append({
                 "subject": subj,
@@ -134,15 +134,9 @@ class KGGenClient:
 
 # 测试用例
 if __name__ == "__main__":
-    # 模拟 Config
-    class Config:
-        KGGen_API_KEY = "sk-43738d2df5e84ea2b86d43fd53bf044b" # 替换为你的真实 Key
-        KGGen_MAX_TOKENS = 8192
-        KGGen_TEMPERATURE = 0.0
-
     client = KGGenClient()
     test_text = "勾股定理指出：在直角三角形中，两直角边的平方和等于斜边的平方。例如线段AB和BC。"
     result = client.extract_entities_and_relations(test_text)
-    
+
     import json
     print(json.dumps(result, ensure_ascii=False, indent=2))

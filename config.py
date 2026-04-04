@@ -1,16 +1,23 @@
 # 配置文件
 import os
 
+# 尝试加载 .env 文件
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 class Config:
-    # 数据路径配置
-    DATA_DIR = "D:\\数据"  # 数学教材数据目录
-    OUTPUT_DIR = "./output"
-    MODEL_DIR = "./models"
-    
+    # 数据路径配置（使用环境变量，跨平台兼容）
+    DATA_DIR = os.getenv('DATA_DIR', os.path.join(os.path.dirname(__file__), 'data'))
+    OUTPUT_DIR = os.getenv('OUTPUT_DIR', './output')
+    MODEL_DIR = os.getenv('MODEL_DIR', './models')
+
     # 实体类型定义
     ENTITY_TYPES = {
         "CONCEPT": "数学概念",
-        "FORMULA": "数学公式", 
+        "FORMULA": "数学公式",
         "THEOREM": "定理定律",
         "EXAMPLE": "例题示例",
         "METHOD": "解题方法",
@@ -19,7 +26,7 @@ class Config:
         "CHAPTER": "章节",
         "MODULE": "模块"
     }
-    
+
     # 关系类型定义
     RELATION_TYPES = {
         "BELONGS_TO": "属于",           # 章节属于模块
@@ -29,19 +36,19 @@ class Config:
         "APPLIES": "应用",              # A应用于B
         "CONTAINS": "包含"              # A包含B
     }
-    
-    # 模型配置
-    BERT_MODEL = "C:\\Users\\xiejiang\\models\\bert-base-chinese"
+
+    # 模型配置（使用环境变量，支持跨平台路径）
+    BERT_MODEL = os.getenv('BERT_MODEL_PATH', 'bert-base-chinese')
     MAX_SEQ_LENGTH = 512
     BATCH_SIZE = 16
     LEARNING_RATE = 2e-5
     EPOCHS = 3
-    
-    # Neo4j配置
-    NEO4J_URI = "neo4j://localhost:7687"
-    NEO4J_USER = "neo4j"
-    NEO4J_PASSWORD = "C99VYLXMvEVanXXyv6wSTLxuXfn7IODfBfGK7Dgennk"
-    
+
+    # Neo4j配置（从环境变量读取，不再硬编码密码）
+    NEO4J_URI = os.getenv('NEO4J_URI', 'neo4j://localhost:7687')
+    NEO4J_USER = os.getenv('NEO4J_USER', 'neo4j')
+    NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', '')
+
     # 正则表达式模式
     FORMULA_PATTERNS = [
         r'[a-zA-Zα-ωΑ-Ω]\s*=\s*[^=]+',  # 变量赋值
@@ -53,28 +60,28 @@ class Config:
         r'√[a-zA-Zα-ωΑ-Ω\d]+',                    # 平方根
         r'[a-zA-Zα-ωΑ-Ω]\([^)]+\)',               # 函数形式
     ]
-    
+
     THEOREM_PATTERNS = [
         r'[《》]([^《》]+)[定规定律]',
         r'([^，。]+)[定规定律]',
         r'[《》]([^《》]+)公式',
         r'([^，。]+)公式'
     ]
-    
-    # KGGen配置 - 已切换到Volcengine ARK API
-    KGGen_API_KEY = "b05528ee-73ba-4d5f-b15e-937b5993b53b"  # 直接硬编码API密钥
-    KGGen_MODEL = "doubao-seed-1-6-250615"  # 模型选择，添加volcengine提供商前缀
-    KGGen_MAX_TOKENS = 4000  # 最大token数
-    KGGen_TEMPERATURE = 0.1  # 温度参数
-    KGGen_ENTITY_TYPES = ["CONCEPT", "FORMULA", "THEOREM", "METHOD", "EXAMPLE"]  # 实体类型
-    KGGen_RELATION_TYPES = ["BELONGS_TO", "PREREQUISITE", "RELATED", "DERIVES", "APPLIES"]  # 关系类型
-    
-    KGGEN_API_URL = os.getenv('KGGEN_API_URL', 'https://ark.cn-beijing.volces.com/api/v3/chat/completions')  # KGGen API完整端点URL
-    KGGEN_TIMEOUT = int(os.getenv('KGGEN_TIMEOUT', '60'))  # 请求超时时间（秒），增加到60秒
-    KGGEN_MAX_RETRIES = int(os.getenv('KGGEN_MAX_RETRIES', '5'))  # 最大重试次数，增加到5次
+
+    # KGGen配置（从环境变量读取，不再硬编码密钥）
+    KGGen_API_KEY = os.getenv('KGGEN_API_KEY', '')
+    KGGen_MODEL = os.getenv('KGGEN_MODEL', 'doubao-seed-1-6-250615')
+    KGGen_MAX_TOKENS = 4000
+    KGGen_TEMPERATURE = 0.1
+    KGGen_ENTITY_TYPES = ["CONCEPT", "FORMULA", "THEOREM", "METHOD", "EXAMPLE"]
+    KGGen_RELATION_TYPES = ["BELONGS_TO", "PREREQUISITE", "RELATED", "DERIVES", "APPLIES"]
+
+    KGGEN_API_URL = os.getenv('KGGEN_API_URL', 'https://ark.cn-beijing.volces.com/api/v3/chat/completions')
+    KGGEN_TIMEOUT = int(os.getenv('KGGEN_TIMEOUT', '60'))
+    KGGEN_MAX_RETRIES = int(os.getenv('KGGEN_MAX_RETRIES', '5'))
 
     # LTP 模型路径配置
-    LTP_MODEL_PATH = os.getenv('LTP_MODEL_PATH', r"C:\Users\xiejiang\Desktop\knowledge_graph_project\small-main")
+    LTP_MODEL_PATH = os.getenv('LTP_MODEL_PATH', '')
 
     @staticmethod
     def ensure_dirs():
@@ -85,12 +92,20 @@ class Config:
     @staticmethod
     def validate_kggen_config():
         """验证KGGen配置"""
-        if not Config.KGGen_API_KEY or Config.KGGen_API_KEY == "your_api_key_here":
-            print("警告: KGGen_API_KEY 未设置，KGGen功能可能无法使用")
-            print("请设置环境变量: export KGGEN_API_KEY=your_actual_api_key")
-        return bool(Config.KGGen_API_KEY and Config.KGGen_API_KEY != "your_api_key_here")
+        if not Config.KGGen_API_KEY:
+            print("警告: KGGEN_API_KEY 未设置，KGGen功能可能无法使用")
+            print("请在 .env 文件中设置: KGGEN_API_KEY=your_actual_api_key")
+        return bool(Config.KGGen_API_KEY)
+
+    @staticmethod
+    def validate_neo4j_config():
+        """验证Neo4j配置"""
+        if not Config.NEO4J_PASSWORD:
+            print("警告: NEO4J_PASSWORD 未设置")
+            print("请在 .env 文件中设置: NEO4J_PASSWORD=your_password")
+        return bool(Config.NEO4J_PASSWORD)
 
 # 初始化目录
 Config.ensure_dirs()
-# 验证KGGen配置
+# 验证配置
 Config.validate_kggen_config()

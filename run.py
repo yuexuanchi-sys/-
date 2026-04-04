@@ -7,7 +7,7 @@
 import argparse
 import sys
 import os
-from knowledge_graph_builder import KnowledgeGraphBuilder
+from knowledge_graph_builder_kggen import KGGenEnhancedKnowledgeGraphBuilder as KnowledgeGraphBuilder
 from app import app
 
 def build_knowledge_graph():

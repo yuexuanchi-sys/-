@@ -2,17 +2,16 @@ from flask import Flask, request, jsonify, render_template
 from neo4j import GraphDatabase
 import json
 import re
+from config import Config
 
 app = Flask(__name__)
 
-# Neo4j配置
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "BMtanwang7546"
-
 class MathKnowledgeGraph:
     def __init__(self):
-        self.driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        self.driver = GraphDatabase.driver(
+            Config.NEO4J_URI,
+            auth=(Config.NEO4J_USER, Config.NEO4J_PASSWORD)
+        )
     
     def close(self):
         self.driver.close()

@@ -11,7 +11,8 @@ import pandas as pd
 from enhanced_data_processor import EnhancedDataProcessor
 from data_loader import MathDataLoader
 from bert_trainer_v2 import AdvancedBERTTrainer
-from entity_extractor_v2 import AdvancedEntityExtractor
+from entity_extractor_kggen import KGGenEnhancedEntityExtractor as AdvancedEntityExtractor
+from config import Config
 import shutil
 
 def create_test_data():
@@ -21,7 +22,7 @@ def create_test_data():
     # 指定要使用的数据文件
     data_files = ['7.1.docx', '7.2.docx', '7.11.docx']
     
-    data_dir = "D:\\数据"
+    data_dir = Config.DATA_DIR
     
     # 详细检查数据文件是否存在
     print(f"检查数据目录: {data_dir}")

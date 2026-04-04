@@ -22,7 +22,7 @@
    - 打开 Neo4j Desktop
    - 点击 "New Project" → "Add Database" → "Local DBMS"
    - 设置数据库名称 (如: knowledge_graph)
-   - 设置密码: `BMtanwang7546` (与config.py中一致)
+   - 设置密码: `your_neo4j_password（请在.env文件中配置）` (与config.py中一致)
    - 点击 "Create"
 
 3. **启动数据库**
@@ -48,7 +48,7 @@ docker run \
     -v neo4j_data:/data \
     -v neo4j_logs:/logs \
     -v neo4j_import:/var/lib/neo4j/import \
-    --env NEO4J_AUTH=neo4j/BMtanwang7546 \
+    --env NEO4J_AUTH=neo4j/your_neo4j_password（请在.env文件中配置） \
     neo4j:latest
 ```
 
@@ -64,7 +64,7 @@ docker run \
      dbms.connector.bolt.listen_address=:7687
      dbms.connector.http.listen_address=:7474
      ```
-   - 设置密码: `neo4j-admin set-initial-password BMtanwang7546`
+   - 设置密码: `neo4j-admin set-initial-password your_neo4j_password（请在.env文件中配置）`
 
 3. **启动服务**
    - `bin\neo4j console` (前台运行)
@@ -75,7 +75,7 @@ docker run \
 ### 测试Neo4j Browser
 访问: http://localhost:7474
 - 用户名: `neo4j`
-- 密码: `BMtanwang7546`
+- 密码: `your_neo4j_password（请在.env文件中配置）`
 
 ### 测试Python连接
 运行测试脚本:
