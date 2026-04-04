@@ -31,11 +31,13 @@ class KGGenMathKnowledgePipeline:
     
     def __init__(self, use_kggen: bool = True):
         self.use_kggen = use_kggen
-        self.kggen_client = KGGenClient() if use_kggen else None
-        self.entity_extractor = KGGenEnhancedEntityExtractor(use_kggen=use_kggen)
-        self.relation_extractor = KGGenEnhancedRelationExtractor()
+        # builder 内部统一管理 KGGen 调用，不再额外创建客户端
         self.knowledge_graph_builder = KGGenEnhancedKnowledgeGraphBuilder(use_kggen=use_kggen)
-        
+        # 复用 builder 内部的组件，避免重复初始化
+        self.entity_extractor = self.knowledge_graph_builder.entity_extractor
+        self.relation_extractor = self.knowledge_graph_builder.relation_extractor
+        self.kggen_client = self.knowledge_graph_builder.kggen_client
+
         logger.info(f"KGGen集成: {'启用' if use_kggen else '禁用'}")
     
     def run_full_pipeline(self, mode: str = "hybrid") -> Dict:

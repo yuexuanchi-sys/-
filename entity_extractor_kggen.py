@@ -291,27 +291,32 @@ class KGGenEnhancedEntityExtractor:
         
         for entity_type, keywords in keyword_patterns.items():
             for keyword in keywords:
-                start = text.find(keyword)
-                if start != -1:
-                    # 尝试提取关键词周围的文本作为实体
+                # 修复: 查找所有出现位置，而不是只找第一个
+                search_start = 0
+                while True:
+                    start = text.find(keyword, search_start)
+                    if start == -1:
+                        break
+                    search_start = start + len(keyword)
+
+                    # 提取关键词周围的上下文
                     context_start = max(0, start - 10)
                     context_end = min(len(text), start + len(keyword) + 20)
                     context = text[context_start:context_end]
-                    
-                    # 使用简单的启发式规则提取概念
+
                     concept = self._extract_concept_from_context(context, keyword)
                     if concept:
-                        concept_start = context_start + context.find(concept)
-                        concept_end = concept_start + len(concept)
-                        
-                        entities.append({
-                            'text': concept,
-                            'start': concept_start,
-                            'end': concept_end,
-                            'type': entity_type,
-                            'source': 'rule+context',
-                            'confidence': 0.7
-                        })
+                        # 修复: 在原文中定位概念，而不是在截取的 context 中
+                        concept_pos = text.find(concept, context_start)
+                        if concept_pos != -1:
+                            entities.append({
+                                'text': concept,
+                                'start': concept_pos,
+                                'end': concept_pos + len(concept),
+                                'type': entity_type,
+                                'source': 'rule+context',
+                                'confidence': 0.7,
+                            })
         
         return entities
     
@@ -334,55 +339,49 @@ class KGGenEnhancedEntityExtractor:
         return None
     
     def pos_based_extraction(self, text: str) -> List[Dict]:
-        """基于词性标注的实体提取"""
+        """基于词性标注的实体提取 (修复: 追踪实际字符偏移量)"""
         if not self.use_pos_tagging:
             return []
-        
+
         entities = []
-        
+
         try:
-            # 使用jieba进行词性标注
             words = pseg.cut(text)
-            
-            current_entity = None
+
+            # 追踪当前在原文中的偏移量，而不是用 text.find()
+            offset = 0
             for word, flag in words:
-                # 名词通常表示概念或定理
+                # 在原文中定位当前词的实际位置
+                start = text.find(word, offset)
+                if start == -1:
+                    continue
+                end = start + len(word)
+                offset = end  # 下次从这里开始找
+
                 if flag.startswith('n') and len(word) > 1:
-                    # 数学相关名词
-                    if any(math_term in word for math_term in ['定理', '公式', '法则', '原理', '定义']):
+                    if any(t in word for t in ['定理', '公式', '法则', '原理', '定义']):
                         entity_type = 'THEOREM'
-                    elif any(math_term in word for math_term in ['函数', '方程', '不等式', '矩阵', '向量']):
+                    elif any(t in word for t in ['函数', '方程', '不等式', '矩阵', '向量']):
                         entity_type = 'CONCEPT'
                     else:
                         entity_type = 'CONCEPT'
-                    
-                    start = text.find(word)
-                    if start != -1:
-                        entities.append({
-                            'text': word,
-                            'start': start,
-                            'end': start + len(word),
-                            'type': entity_type,
-                            'source': 'pos',
-                            'confidence': 0.6
-                        })
-                
-                # 英文单词通常表示公式或方法
+
+                    entities.append({
+                        'text': word, 'start': start, 'end': end,
+                        'type': entity_type, 'source': 'pos',
+                        'confidence': 0.6,
+                    })
+
                 elif flag == 'eng' and len(word) > 1:
-                    start = text.find(word)
-                    if start != -1:
-                        entities.append({
-                            'text': word,
-                            'start': start,
-                            'end': start + len(word),
-                            'type': 'FORMULA',
-                            'source': 'pos',
-                            'confidence': 0.5
-                        })
-            
+                    entities.append({
+                        'text': word, 'start': start, 'end': end,
+                        'type': 'FORMULA', 'source': 'pos',
+                        'confidence': 0.5,
+                    })
+
         except Exception as e:
             print(f"词性标注提取失败: {e}")
-        
+
         return entities
     
     def model_based_extraction(self, text: str) -> List[Dict]:

@@ -9,20 +9,21 @@ from kggen_client import KGGenClient
 class KGGenEnhancedRelationExtractor:
     """KGGen增强的关系提取器，集成本地模型和KGGen API"""
     
-    def __init__(self):
+    def __init__(self, use_kggen: bool = False):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
+
         # 关系类型映射
         self.relation2id = {k: i for i, k in enumerate(Config.RELATION_TYPES.keys())}
         self.id2relation = {v: k for k, v in self.relation2id.items()}
-        
-        # KGGen客户端
+
+        # KGGen客户端 (默认禁用，由 builder 统一调度避免重复调用)
         self.kggen_client = None
-        try:
-            self.kggen_client = KGGenClient()
-            print("[OK] KGGen关系提取客户端初始化成功")
-        except Exception as e:
-            print(f"[WARN] KGGen客户端初始化失败: {e}")
+        if use_kggen:
+            try:
+                self.kggen_client = KGGenClient()
+                print("[OK] KGGen关系提取客户端初始化成功")
+            except Exception as e:
+                print(f"[WARN] KGGen客户端初始化失败: {e}")
         
         # 尝试加载BERT模型，如果失败则仅使用规则方法
         self.model_loaded = False
