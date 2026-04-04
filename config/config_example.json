@@ -1,0 +1,16 @@
+{
+    "llm_api": {
+        "base_url": "https://your-llm-api-endpoint.com",
+        "api_key": "YOUR_API_KEY_HERE",
+        "model": "your-model-name"
+    },
+    "neo4j": {
+        "uri": "bolt://localhost:7687",
+        "user": "neo4j",
+        "password": "YOUR_NEO4J_PASSWORD"
+    },
+    "bert": {
+        "model_path": "./models/bert-chinese-ner",
+        "device": "cpu"
+    }
+}
