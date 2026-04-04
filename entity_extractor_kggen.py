@@ -9,7 +9,10 @@ import json
 from typing import List, Dict, Tuple, Optional, Set
 from config import Config
 import numpy as np
-from seqeval.metrics import classification_report
+try:
+    from seqeval.metrics import classification_report
+except ImportError:
+    classification_report = None
 import jieba
 import jieba.posseg as pseg
 from collections import defaultdict
