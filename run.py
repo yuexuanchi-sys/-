@@ -47,9 +47,9 @@ def clear_database():
     """清空图数据库"""
     confirm = input("确定要清空图数据库吗？此操作不可撤销！(y/N): ")
     if confirm.lower() == 'y':
-        builder = KnowledgeGraphBuilder()
-        builder.clear_graph()
-        print("图数据库已清空")
+        from neo4j_manager import Neo4jManager
+        manager = Neo4jManager()
+        manager.clear_database()
     else:
         print("操作已取消")
 

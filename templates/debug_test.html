@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>调试信息</title>
+    <style>
+        body { font-family: monospace; background: #0a0a1a; color: #0f0; padding: 20px; }
+        pre { white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <h2>Debug Info</h2>
+    <pre id="info">加载中...</pre>
+    <script>
+    (async () => {
+        const endpoints = ['/api/health', '/api/test-data', '/api/chapters'];
+        let output = '';
+        for (const url of endpoints) {
+            output += `\n--- ${url} ---\n`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                output += JSON.stringify(data, null, 2) + '\n';
+            } catch (e) {
+                output += `ERROR: ${e.message}\n`;
+            }
+        }
+        document.getElementById('info').textContent = output;
+    })();
+    </script>
+</body>
+</html>
