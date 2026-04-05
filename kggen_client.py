@@ -1,10 +1,15 @@
 import os
 import time
-import litellm
 import logging
 from typing import List, Dict, Optional
 from config import Config
-from kg_gen import KGGen
+
+try:
+    import litellm
+    from kg_gen import KGGen
+    _kggen_available = True
+except ImportError:
+    _kggen_available = False
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +19,11 @@ class KGGenClient:
     """真实接入 kg_gen 库的客户端，专为数学知识图谱定制"""
     
     def __init__(self):
+        if not _kggen_available:
+            raise ImportError("kg_gen 和 litellm 未安装, 请运行: pip install kg-gen litellm")
+        if not Config.KGGen_API_KEY:
+            raise ValueError("KGGEN_API_KEY 未设置, 请在 .env 文件中配置")
+
         # 1. 强制覆盖环境变量，解决 LiteLLM 路由 DeepSeek 的底层 BUG
         os.environ["OPENAI_API_KEY"] = Config.KGGen_API_KEY
         os.environ["OPENAI_API_BASE"] = "https://api.deepseek.com/v1"

@@ -1,4 +1,8 @@
-from py2neo import Graph, Node, Relationship
+try:
+    from py2neo import Graph, Node, Relationship
+    _py2neo_available = True
+except ImportError:
+    _py2neo_available = False
 import pandas as pd
 from typing import List, Dict
 from config import Config
@@ -10,8 +14,11 @@ class Neo4jManager:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         
-        self._connect_with_retry()
-    
+        if _py2neo_available:
+            self._connect_with_retry()
+        else:
+            print("[WARN] py2neo 未安装，使用离线模式")
+
     def _connect_with_retry(self):
         """带重试机制的连接方法"""
         for attempt in range(self.max_retries):

@@ -4,7 +4,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer, BertTokenizerFast, BertModel, get_linear_schedule_with_warmup
-from transformers import AdamW
+try:
+    from transformers import AdamW
+except ImportError:
+    from torch.optim import AdamW
 from TorchCRF import CRF
 import pandas as pd
 from typing import List, Dict, Tuple, Optional
@@ -266,6 +269,8 @@ class AdvancedBERTTrainer:
         self.best_val_f1 = 0
         self.best_model_state = None
         self.training_history = []
+        self.label2id = {}
+        self.id2label = {}
         
     def prepare_data(self, train_data_path: str, val_data_path: str = None, 
                     test_data_path: str = None, batch_size: int = 16, 

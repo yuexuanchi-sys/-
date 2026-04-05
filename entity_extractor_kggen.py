@@ -407,7 +407,7 @@ class KGGenEnhancedEntityExtractor:
             entities = []
             
             if predictions and len(predictions) > 0:
-                pred_labels = [self.id2label[pred] for pred in predictions[0]]
+                pred_labels = [self.id2label.get(int(pred), 'O') for pred in predictions[0]]
             else:
                 return []
             
