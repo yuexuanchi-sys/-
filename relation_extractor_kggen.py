@@ -1,14 +1,29 @@
+"""
+KGGen增强的关系提取器
+
+提取方法:
+1. 基于规则的模板匹配 (40+ 数学领域模式)
+2. 基于共现的关系推断 (同句/近邻共现)
+3. 基于模型的关系分类 (BERT, 可选)
+4. KGGen API 关系提取 (可选)
+"""
+
 import torch
 import torch.nn as nn
 from transformers import BertModel, BertTokenizer
 import re
-from typing import List, Dict, Tuple
+import logging
+from typing import List, Dict, Tuple, Set, Optional
+from collections import defaultdict
 from config import Config
-from kggen_client import KGGenClient
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class KGGenEnhancedRelationExtractor:
-    """KGGen增强的关系提取器，集成本地模型和KGGen API"""
-    
+    """KGGen增强的关系提取器"""
+
     def __init__(self, use_kggen: bool = False):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -16,339 +31,460 @@ class KGGenEnhancedRelationExtractor:
         self.relation2id = {k: i for i, k in enumerate(Config.RELATION_TYPES.keys())}
         self.id2relation = {v: k for k, v in self.relation2id.items()}
 
-        # KGGen客户端 (默认禁用，由 builder 统一调度避免重复调用)
+        # KGGen客户端 (默认禁用, 由 builder 统一调度)
         self.kggen_client = None
         if use_kggen:
             try:
+                from kggen_client import KGGenClient
                 self.kggen_client = KGGenClient()
-                print("[OK] KGGen关系提取客户端初始化成功")
+                logger.info("[OK] KGGen关系提取客户端初始化成功")
             except Exception as e:
-                print(f"[WARN] KGGen客户端初始化失败: {e}")
-        
-        # 尝试加载BERT模型，如果失败则仅使用规则方法
+                logger.warning(f"KGGen客户端初始化失败: {e}")
+
+        # BERT模型 (可选)
         self.model_loaded = False
         self.tokenizer = None
         self.model = None
-        
         try:
             self.tokenizer = BertTokenizer.from_pretrained(Config.BERT_MODEL)
             self.model = BERTRelationExtractor(len(self.relation2id))
             self.model.to(self.device)
             self.model_loaded = True
-            print("[OK] 关系抽取BERT模型加载成功")
+            logger.info("[OK] 关系抽取BERT模型加载成功")
         except Exception as e:
-            print(f"[WARN] 关系抽取BERT模型加载失败: {e}")
-            print("[WARN] 将使用基于规则和KGGen的方法进行关系抽取")
-        
-        # 规则模板 - 扩展更多数学教材中的常见表达
+            logger.warning(f"关系抽取BERT模型加载失败: {e}")
+            logger.warning("将使用基于规则和KGGen的方法进行关系抽取")
+
+        # ============================================================
+        # 规则模板 — 覆盖初中数学教材的常见表达
+        # ============================================================
         self.rule_patterns = {
             'BELONGS_TO': [
-                r'([^，。]+)属于([^，。]+)',
-                r'([^，。]+)是([^，。]+)的一部分',
-                r'([^，。]+)包含在([^，。]+)中',
-                r'([^，。]+)包括([^，。]+)',
-                r'([^，。]+)分为([^，。]+)',
-                r'([^，。]+)可以分为([^，。]+)'
+                r'([^，。；]+?)属于([^，。；]+)',
+                r'([^，。；]+?)是([^，。；]+?)的一种',
+                r'([^，。；]+?)是([^，。；]+?)的特例',
+                r'([^，。；]+?)是特殊的([^，。；]+)',
+                r'([^，。；]+?)包含在([^，。；]+?)中',
             ],
             'PREREQUISITE': [
-                r'([^，。]+)需要([^，。]+)',
-                r'([^，。]+)依赖于([^，。]+)',
-                r'([^，。]+)的前提是([^，。]+)',
-                r'([^，。]+)必须掌握([^，。]+)',
-                r'([^，。]+)要求([^，。]+)',
-                r'([^，。]+)基于([^，。]+)',
-                r'([^，。]+)建立在([^，。]+)基础上'
+                r'学习([^，。；]+?)之前.*?掌握([^，。；]+)',
+                r'([^，。；]+?)是学习([^，。；]+?)的基础',
+                r'([^，。；]+?)以([^，。；]+?)为基础',
+                r'([^，。；]+?)依赖于([^，。；]+)',
+                r'由([^，。；]+?)引入([^，。；]+)',
+                r'从([^，。；]+?)推广到([^，。；]+)',
+                r'([^，。；]+?)建立在([^，。；]+?)基础上',
             ],
             'DERIVES': [
-                r'([^，。]+)推导出([^，。]+)',
-                r'([^，。]+)推出([^，。]+)',
-                r'由([^，。]+)可得([^，。]+)',
-                r'若([^，。]+)则([^，。]+)',
-                r'([^，。]+)导出([^，。]+)',
-                r'([^，。]+)得到([^，。]+)',
-                r'根据([^，。]+)得到([^，。]+)'
+                r'由([^，。；]+?)可[以得]([^，。；]+)',
+                r'根据([^，。；]+?)[,，].*?得到([^，。；]+)',
+                r'([^，。；]+?)推导出([^，。；]+)',
+                r'若([^，。；]+?)[则就]([^，。；]+)',
+                r'([^，。；]+?)可以[推导]出([^，。；]+)',
+                r'利用([^，。；]+?)可以[求计]算([^，。；]+)',
+                r'([^，。；]+?)等价于([^，。；]+)',
             ],
             'RELATED': [
-                r'([^，。]+)与([^，。]+)相关',
-                r'([^，。]+)和([^，。]+)有联系',
-                r'([^，。]+)类似于([^，。]+)',
-                r'([^，。]+)对应([^，。]+)',
-                r'([^，。]+)相当于([^，。]+)',
-                r'([^，。]+)等于([^，。]+)',
-                r'([^，。]+)不同于([^，。]+)'
+                r'([^，。；]+?)与([^，。；]+?)的关系',
+                r'([^，。；]+?)和([^，。；]+?)[有存]在.*?关系',
+                r'([^，。；]+?)类似于([^，。；]+)',
+                r'([^，。；]+?)对应([^，。；]+)',
+                r'([^，。；]+?)互为([^，。；]+)',
+                r'([^，。；]+?)的逆运算是([^，。；]+)',
+                r'([^，。；]+?)的逆.*?是([^，。；]+)',
             ],
             'APPLIES': [
-                r'([^，。]+)应用于([^，。]+)',
-                r'([^，。]+)用来([^，。]+)',
-                r'([^，。]+)可以解决([^，。]+)',
-                r'([^，。]+)用于([^，。]+)'
+                r'([^，。；]+?)应用于([^，。；]+)',
+                r'用([^，。；]+?)解决([^，。；]+)',
+                r'([^，。；]+?)可以解决([^，。；]+)',
+                r'([^，。；]+?)用于([^，。；]+)',
+                r'利用([^，。；]+?)[解求]([^，。；]+)',
+                r'运用([^，。；]+?)[解求]([^，。；]+)',
             ],
             'CONTAINS': [
-                r'([^，。]+)包含([^，。]+)',
-                r'([^，。]+)有([^，。]+)',
-                r'([^，。]+)包括([^，。]+)',
-                r'([^，。]+)由([^，。]+)组成'
-            ]
+                r'([^，。；]+?)包含([^，。；]+)',
+                r'([^，。；]+?)包括([^，。；]+)',
+                r'([^，。；]+?)由([^，。；]+?)组成',
+                r'([^，。；]+?)分为([^，。；]+)',
+                r'([^，。；]+?)有.*?([^，。；]+?)等',
+            ],
         }
-    
+
+        # ============================================================
+        # 数学领域的定义/性质模式 (补充关系)
+        # ============================================================
+        self.definition_patterns = [
+            # "XXX叫做YYY" / "XXX称为YYY"
+            (r'([^，。；]+?)叫做([^，。；]+)', '定义'),
+            (r'([^，。；]+?)称为([^，。；]+)', '定义'),
+            (r'([^，。；]+?)就是([^，。；]+)', '定义'),
+            (r'([^，。；]+?)简称([^，。；]+)', '定义'),
+            # 性质
+            (r'([^，。；]+?)的性质[是为：:]([^，。；]+)', '性质'),
+            (r'([^，。；]+?)具有([^，。；]+?)性', '性质'),
+            # 计算
+            (r'([^，。；]+?)[的之]计算[法公]则[是为：:]([^，。；]+)', '计算法则'),
+            (r'([^，。；]+?)的[计运]算[法规]则', '计算法则'),
+            # 符号
+            (r'([^，。；]+?)用([^，。；]+?)表示', '符号表示'),
+            (r'([^，。；]+?)记[作为]([^，。；]+)', '符号表示'),
+        ]
+
+    # ================================================================
+    #  公共接口
+    # ================================================================
+
     def extract_relations(self, text: str, entities: List[Dict]) -> List[Dict]:
-        """提取实体之间的关系，集成KGGen增强"""
+        """提取实体之间的关系"""
+        if not entities or len(entities) < 2:
+            return []
+
         relations = []
-        
-        # 1. 基于规则的关系抽取
-        rule_based_relations = self.rule_based_extraction(text, entities)
-        relations.extend(rule_based_relations)
-        
-        # 2. 基于模型的关系抽取（如果有足够的实体对且模型已加载）
-        if len(entities) >= 2 and self.model_loaded:
+
+        # 1. 规则模板匹配
+        relations.extend(self._rule_based_extraction(text, entities))
+
+        # 2. 定义/性质模式
+        relations.extend(self._definition_pattern_extraction(text, entities))
+
+        # 3. 共现关系推断
+        relations.extend(self._cooccurrence_extraction(text, entities))
+
+        # 4. BERT模型 (如果可用)
+        if self.model_loaded and len(entities) >= 2:
             try:
-                model_based_relations = self.model_based_extraction(text, entities)
-                relations.extend(model_based_relations)
+                relations.extend(self._model_based_extraction(text, entities))
             except Exception as e:
-                print(f"模型关系抽取失败，继续使用规则方法: {e}")
-        
-        # 3. KGGen API关系抽取
+                logger.debug(f"模型关系抽取失败: {e}")
+
+        # 5. KGGen API (如果可用)
         if self.kggen_client:
             try:
-                kggen_based_relations = self.kggen_based_extraction(text, entities)
-                relations.extend(kggen_based_relations)
+                relations.extend(self._kggen_extraction(text, entities))
             except Exception as e:
-                print(f"KGGen关系抽取失败: {e}")
-        
+                logger.debug(f"KGGen关系抽取失败: {e}")
+
         return relations
-    
-    def kggen_based_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
-        """使用KGGen API提取关系"""
-        if not self.kggen_client:
-            return []
-        
-        try:
-            result = self.kggen_client.extract_entities_and_relations(text)
-            kggen_relations = result.get("relations", [])
-            
-            # 验证关系中的实体是否存在
-            valid_relations = []
-            entity_texts = {e["text"] for e in entities}
-            
-            for rel in kggen_relations:
-                if (rel["subject"] in entity_texts and 
-                    rel["object"] in entity_texts):
-                    rel["source"] = "kggen"
-                    rel["confidence"] = rel.get("confidence", 0.9)
-                    valid_relations.append(rel)
-            
-            return valid_relations
-        except Exception as e:
-            print(f"KGGen关系提取失败: {e}")
-            return []
-    
-    def rule_based_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
-        """基于规则的关系抽取"""
+
+    # ================================================================
+    #  规则模板匹配
+    # ================================================================
+
+    def _rule_based_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """基于规则模板的关系抽取"""
         relations = []
         entity_texts = [e['text'] for e in entities]
-        
+
         for rel_type, patterns in self.rule_patterns.items():
             for pattern in patterns:
-                matches = re.finditer(pattern, text)
-                for match in matches:
+                for match in re.finditer(pattern, text):
                     if match.groups() and len(match.groups()) >= 2:
-                        entity1_text = match.group(1).strip()
-                        entity2_text = match.group(2).strip()
-                        
-                        # 检查是否在实体列表中（使用部分匹配）
-                        entity1 = self._find_best_match_entity(entity1_text, entities)
-                        entity2 = self._find_best_match_entity(entity2_text, entities)
-                        
-                        if entity1 and entity2:
+                        e1_text = match.group(1).strip()
+                        e2_text = match.group(2).strip()
+
+                        e1 = self._find_best_match(e1_text, entities)
+                        e2 = self._find_best_match(e2_text, entities)
+
+                        if e1 and e2 and e1['text'] != e2['text']:
+                            relations.append({
+                                'subject': e1['text'],
+                                'object': e2['text'],
+                                'relation': rel_type,
+                                'source': 'rule',
+                                'confidence': 0.9,
+                            })
+        return relations
+
+    def _definition_pattern_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """定义/性质模式提取"""
+        relations = []
+        for pattern, rel_name in self.definition_patterns:
+            for match in re.finditer(pattern, text):
+                if match.groups() and len(match.groups()) >= 2:
+                    e1_text = match.group(1).strip()
+                    e2_text = match.group(2).strip()
+
+                    e1 = self._find_best_match(e1_text, entities)
+                    e2 = self._find_best_match(e2_text, entities)
+
+                    if e1 and e2 and e1['text'] != e2['text']:
+                        relations.append({
+                            'subject': e1['text'],
+                            'object': e2['text'],
+                            'relation': rel_name,
+                            'source': 'rule',
+                            'confidence': 0.85,
+                        })
+        return relations
+
+    # ================================================================
+    #  共现关系推断
+    # ================================================================
+
+    def _cooccurrence_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """
+        基于共现的关系推断 (保守策略):
+        仅对 CONCEPT/THEOREM/METHOD 类型实体建立共现关系,
+        且要求上下文中存在明确的关系线索词。
+        FORMULA 类型不参与共现 (噪声太多)。
+        """
+        relations = []
+        # 只对非FORMULA实体做共现
+        valid_types = {'CONCEPT', 'THEOREM', 'METHOD', 'PROPERTY'}
+        concept_entities = [e for e in entities if e.get('type') in valid_types]
+
+        if len(concept_entities) < 2:
+            return relations
+
+        sentences = re.split(r'[。！？；\n]', text)
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if len(sentence) < 10:
+                continue
+
+            sentence_entities = []
+            for e in concept_entities:
+                pos = sentence.find(e['text'])
+                if pos >= 0:
+                    sentence_entities.append((e, pos))
+
+            # 限制每句最多10个实体对
+            if len(sentence_entities) > 10:
+                sentence_entities = sentence_entities[:10]
+
+            for i, (e1, pos1) in enumerate(sentence_entities):
+                for j, (e2, pos2) in enumerate(sentence_entities):
+                    if i >= j or e1['text'] == e2['text']:
+                        continue
+                    distance = abs(pos2 - pos1)
+                    if distance > 40:
+                        continue
+
+                    between_start = min(pos1 + len(e1['text']), pos2 + len(e2['text']))
+                    between_end = max(pos1, pos2)
+                    between_text = sentence[between_start:between_end] if between_start < between_end else ''
+
+                    # 必须有明确的关系线索词 (不再默认推断 RELATED)
+                    rel_type = self._infer_relation_from_context_strict(between_text, e1, e2)
+                    if rel_type:
+                        relations.append({
+                            'subject': e1['text'],
+                            'object': e2['text'],
+                            'relation': rel_type,
+                            'source': 'cooccurrence',
+                            'confidence': 0.7,
+                        })
+
+        return relations
+
+    def _infer_relation_from_context_strict(self, between_text: str,
+                                             e1: Dict, e2: Dict) -> Optional[str]:
+        """严格模式: 只在上下文有明确关系词时推断"""
+        bt = between_text.strip()
+
+        if any(kw in bt for kw in ['包含', '包括', '分为', '组成']):
+            return 'CONTAINS'
+        if any(kw in bt for kw in ['推导', '得到', '可得', '推出', '因此', '所以']):
+            return 'DERIVES'
+        if any(kw in bt for kw in ['基础', '前提', '先学', '需要', '依赖']):
+            return 'PREREQUISITE'
+        if any(kw in bt for kw in ['应用', '解决', '求解', '利用']):
+            return 'APPLIES'
+        if any(kw in bt for kw in ['属于', '是一种', '是特殊的']):
+            return 'BELONGS_TO'
+        if any(kw in bt for kw in ['叫做', '称为', '就是', '定义为']):
+            return 'RELATED'
+        if any(kw in bt for kw in ['与', '类似', '对应', '互为', '逆']):
+            return 'RELATED'
+
+        # 类型推断: THEOREM/METHOD → CONCEPT
+        if e1.get('type') == 'THEOREM' and e2.get('type') == 'CONCEPT':
+            return 'APPLIES'
+        if e1.get('type') == 'METHOD' and e2.get('type') == 'CONCEPT':
+            return 'APPLIES'
+
+        return None
+
+    # ================================================================
+    #  BERT模型关系分类
+    # ================================================================
+
+    def _model_based_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """基于BERT模型的关系抽取 (仅在有训练好的模型时使用)"""
+        relations = []
+
+        # 限制实体对数量避免 O(n²) 爆炸
+        max_pairs = min(len(entities) * (len(entities) - 1), 200)
+        pair_count = 0
+
+        for i, entity1 in enumerate(entities):
+            for j, entity2 in enumerate(entities):
+                if i >= j or pair_count >= max_pairs:
+                    continue
+                pair_count += 1
+
+                try:
+                    context = self._get_entity_context(text, entity1, entity2)
+                    input_text = f"{context} [SEP] {entity1['text']} [SEP] {entity2['text']}"
+
+                    encoded = self.tokenizer(
+                        input_text, padding=True, truncation=True,
+                        max_length=Config.MAX_SEQ_LENGTH, return_tensors="pt"
+                    )
+
+                    tokenized = self.tokenizer.convert_ids_to_tokens(encoded['input_ids'][0])
+                    entity1_pos = self._find_entity_position(tokenized, entity1['text'])
+                    entity2_pos = self._find_entity_position(tokenized, entity2['text'])
+
+                    if entity1_pos is None or entity2_pos is None:
+                        continue
+
+                    self.model.eval()
+                    with torch.no_grad():
+                        logits = self.model(
+                            encoded['input_ids'].to(self.device),
+                            encoded['attention_mask'].to(self.device),
+                            torch.tensor([entity1_pos]).to(self.device),
+                            torch.tensor([entity2_pos]).to(self.device),
+                        )
+                        probs = torch.softmax(logits, dim=-1)
+                        confidence, pred_id = torch.max(probs, dim=-1)
+
+                        if confidence.item() > 0.7:
+                            rel_type = self.id2relation[pred_id.item()]
                             relations.append({
                                 'subject': entity1['text'],
                                 'object': entity2['text'],
                                 'relation': rel_type,
-                                'source': 'rule',
-                                'confidence': 0.9
+                                'source': 'model',
+                                'confidence': round(confidence.item(), 4),
                             })
-        
+                except Exception:
+                    continue
+
         return relations
-    
-    def _find_best_match_entity(self, matched_text: str, entities: List[Dict]) -> Dict:
+
+    # ================================================================
+    #  KGGen API 关系提取
+    # ================================================================
+
+    def _kggen_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
+        """使用 KGGen API 提取关系"""
+        if not self.kggen_client:
+            return []
+        try:
+            result = self.kggen_client.extract_entities_and_relations(text)
+            entity_texts = {e['text'] for e in entities}
+            valid = []
+            for rel in result.get('relations', []):
+                if rel['subject'] in entity_texts and rel['object'] in entity_texts:
+                    rel['source'] = 'kggen'
+                    rel.setdefault('confidence', 0.9)
+                    valid.append(rel)
+            return valid
+        except Exception as e:
+            logger.debug(f"KGGen关系提取失败: {e}")
+            return []
+
+    # ================================================================
+    #  辅助方法
+    # ================================================================
+
+    def _find_best_match(self, matched_text: str, entities: List[Dict]) -> Optional[Dict]:
         """找到最佳匹配的实体"""
-        # 首先尝试完全匹配
-        for entity in entities:
-            if entity['text'] == matched_text:
-                return entity
-        
-        # 然后尝试部分匹配（匹配文本包含在实体文本中，或实体文本包含在匹配文本中）
-        for entity in entities:
-            if entity['text'] in matched_text or matched_text in entity['text']:
-                return entity
-        
-        # 最后尝试相似度匹配（简单的字符串相似度）
-        for entity in entities:
-            if self._text_similarity(entity['text'], matched_text) > 0.6:
-                return entity
-        
+        matched_text = matched_text.strip()
+        if not matched_text or len(matched_text) < 2:
+            return None
+
+        # 精确匹配
+        for e in entities:
+            if e['text'] == matched_text:
+                return e
+
+        # 包含匹配
+        for e in entities:
+            if e['text'] in matched_text or matched_text in e['text']:
+                return e
+
+        # Jaccard 相似度
+        for e in entities:
+            if self._text_similarity(e['text'], matched_text) > 0.6:
+                return e
+
         return None
-    
-    def _text_similarity(self, text1: str, text2: str) -> float:
-        """计算文本相似度（简单的Jaccard相似度）"""
+
+    @staticmethod
+    def _text_similarity(text1: str, text2: str) -> float:
+        """Jaccard 字符相似度"""
         set1 = set(text1)
         set2 = set(text2)
-        intersection = set1.intersection(set2)
-        union = set1.union(set2)
-        
+        union = set1 | set2
         if not union:
             return 0.0
-        return len(intersection) / len(union)
-    
-    def model_based_extraction(self, text: str, entities: List[Dict]) -> List[Dict]:
-        """基于模型的关系抽取"""
-        relations = []
-        
-        # 为每对实体创建样本
-        for i, entity1 in enumerate(entities):
-            for j, entity2 in enumerate(entities):
-                if i != j:  # 避免自环
-                    try:
-                        # 使用实体周围的上下文窗口而不是整个文本
-                        context_window = self._get_entity_context(text, entity1, entity2)
-                        
-                        # 准备输入
-                        input_text = f"{context_window} [SEP] {entity1['text']} [SEP] {entity2['text']}"
-                        
-                        # Tokenize
-                        encoded = self.tokenizer(
-                            input_text,
-                            padding=True,
-                            truncation=True,
-                            max_length=Config.MAX_SEQ_LENGTH,
-                            return_tensors="pt"
-                        )
-                        
-                        # 获取截断后的token序列
-                        tokenized_text = self.tokenizer.convert_ids_to_tokens(encoded['input_ids'][0])
-                        # 根据attention mask移除padding tokens
-                        attention_mask = encoded['attention_mask'][0].bool()
-                        tokenized_text = [token for i, token in enumerate(tokenized_text) if attention_mask[i]]
-                        
-                        # 确保实体文本是字符串
-                        if not isinstance(entity1['text'], str) or not isinstance(entity2['text'], str):
-                            continue
-                        
-                        # 获取实体token序列
-                        entity1_tokens = self.tokenizer.tokenize(entity1['text'])
-                        entity2_tokens = self.tokenizer.tokenize(entity2['text'])
-                        
-                        # 检查实体token是否完全在截断序列中
-                        if not all(token in tokenized_text for token in entity1_tokens) or not all(token in tokenized_text for token in entity2_tokens):
-                            continue  # 跳过如果实体token不完整
-                        
-                        # 在截断的token序列中找到实体位置
-                        entity1_pos = self._find_entity_position(tokenized_text, entity1['text'])
-                        entity2_pos = self._find_entity_position(tokenized_text, entity2['text'])
-                        
-                        if entity1_pos is None or entity2_pos is None:
-                            continue  # 跳过如果无法找到实体位置
-                        
-                        # 确保位置不超过序列长度
-                        seq_len = len(tokenized_text)
-                        if entity1_pos >= seq_len or entity2_pos >= seq_len:
-                            continue  # 跳过如果位置无效
-                            
-                        # 预测关系
-                        self.model.eval()
-                        with torch.no_grad():
-                            logits = self.model(
-                                encoded['input_ids'].to(self.device),
-                                encoded['attention_mask'].to(self.device),
-                                torch.tensor([entity1_pos]).to(self.device),
-                                torch.tensor([entity2_pos]).to(self.device)
-                            )
-                            
-                            probs = torch.softmax(logits, dim=-1)
-                            confidence, pred_id = torch.max(probs, dim=-1)
-                            
-                            if confidence.item() > 0.7:  # 置信度阈值
-                                relation_type = self.id2relation[pred_id.item()]
-                                
-                                relations.append({
-                                    'subject': entity1['text'],
-                                    'object': entity2['text'],
-                                    'relation': relation_type,
-                                    'source': 'model',
-                                    'confidence': confidence.item()
-                                })
-                    except Exception as e:
-                        print(f"关系抽取模型处理失败: {e}")
-                        continue
-        
-        return relations
+        return len(set1 & set2) / len(union)
 
-    def _get_entity_context(self, text: str, entity1: Dict, entity2: Dict) -> str:
-        """获取实体周围的上下文窗口"""
-        # 确定两个实体的最小和最大位置
-        start_pos = min(entity1['start'], entity2['start'])
-        end_pos = max(entity1['end'], entity2['end'])
-        
-        # 扩展上下文窗口
-        context_start = max(0, start_pos - 100)  # 向前扩展100字符
-        context_end = min(len(text), end_pos + 100)  # 向后扩展100字符
-        
-        return text[context_start:context_end]
-    
-    def _find_entity_position(self, tokens: List[str], entity_text: str) -> int:
-        """在token序列中找到实体的起始位置"""
+    def _get_entity_context(self, text: str, e1: Dict, e2: Dict) -> str:
+        """获取两个实体周围的上下文"""
+        start = min(e1.get('start', 0), e2.get('start', 0))
+        end = max(e1.get('end', 0), e2.get('end', 0))
+        ctx_start = max(0, start - 80)
+        ctx_end = min(len(text), end + 80)
+        return text[ctx_start:ctx_end]
+
+    def _find_entity_position(self, tokens: List[str], entity_text: str) -> Optional[int]:
+        """在 token 序列中找到实体起始位置"""
         entity_tokens = self.tokenizer.tokenize(entity_text)
-        
-        # 在tokens中搜索entity_tokens的序列
         for i in range(len(tokens) - len(entity_tokens) + 1):
-            if tokens[i:i+len(entity_tokens)] == entity_tokens:
-                return i  # 返回起始位置
-        
-        return None  # 如果没有找到
+            if tokens[i:i + len(entity_tokens)] == entity_tokens:
+                return i
+        return None
+
 
 class BERTRelationExtractor(nn.Module):
+    """BERT 关系分类模型"""
+
     def __init__(self, num_relations: int):
-        super(BERTRelationExtractor, self).__init__()
+        super().__init__()
         self.bert = BertModel.from_pretrained(Config.BERT_MODEL)
         self.dropout = nn.Dropout(0.1)
         self.classifier = nn.Linear(self.bert.config.hidden_size * 3, num_relations)
-        
+
     def forward(self, input_ids, attention_mask, entity1_pos, entity2_pos):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        sequence_output = outputs.last_hidden_state
-        
-        # 获取实体位置的表示
-        batch_size = sequence_output.size(0)
-        
-        # 获取实体1和实体2的表示
-        entity1_repr = torch.zeros(batch_size, sequence_output.size(-1)).to(sequence_output.device)
-        entity2_repr = torch.zeros(batch_size, sequence_output.size(-1)).to(sequence_output.device)
-        
+        seq_out = outputs.last_hidden_state
+        batch_size = seq_out.size(0)
+
+        entity1_repr = torch.zeros(batch_size, seq_out.size(-1), device=seq_out.device)
+        entity2_repr = torch.zeros(batch_size, seq_out.size(-1), device=seq_out.device)
+
         for i in range(batch_size):
-            entity1_repr[i] = sequence_output[i, entity1_pos[i]].mean(dim=0)
-            entity2_repr[i] = sequence_output[i, entity2_pos[i]].mean(dim=0)
-        
-        # 拼接实体表示和CLS表示
-        cls_repr = sequence_output[:, 0, :]  # CLS token
+            pos1 = entity1_pos[i].item()
+            pos2 = entity2_pos[i].item()
+            # 确保位置在序列长度内
+            pos1 = min(pos1, seq_out.size(1) - 1)
+            pos2 = min(pos2, seq_out.size(1) - 1)
+            entity1_repr[i] = seq_out[i, pos1]
+            entity2_repr[i] = seq_out[i, pos2]
+
+        cls_repr = seq_out[:, 0, :]
         combined = torch.cat([cls_repr, entity1_repr, entity2_repr], dim=-1)
         combined = self.dropout(combined)
-        
-        logits = self.classifier(combined)
-        return logits
+        return self.classifier(combined)
 
-# 使用示例
+
 if __name__ == "__main__":
     extractor = KGGenEnhancedRelationExtractor()
-    
-    # 示例文本和实体
-    test_text = "勾股定理是直角三角形的重要性质，它推导自平方差公式"
+
+    test_text = "勾股定理是直角三角形的重要性质，它推导自平方差公式。学习勾股定理之前需要掌握直角三角形的基本概念。"
     test_entities = [
         {'text': '勾股定理', 'type': 'THEOREM', 'start': 0, 'end': 4},
-        {'text': '直角三角形', 'type': 'CONCEPT', 'start': 6, 'end': 10},
-        {'text': '平方差公式', 'type': 'FORMULA', 'start': 16, 'end': 20}
+        {'text': '直角三角形', 'type': 'CONCEPT', 'start': 5, 'end': 10},
+        {'text': '平方差公式', 'type': 'FORMULA', 'start': 18, 'end': 23},
     ]
-    
+
     relations = extractor.extract_relations(test_text, test_entities)
     print("提取到的关系:")
     for rel in relations:
-        print(f"{rel['subject']} --{rel['relation']}--> {rel['object']} (来源: {rel['source']}, 置信度: {rel['confidence']:.2f})")
+        print(f"  {rel['subject']} --[{rel['relation']}]--> {rel['object']} "
+              f"(来源: {rel['source']}, 置信度: {rel['confidence']:.2f})")
