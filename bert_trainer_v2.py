@@ -617,6 +617,109 @@ class AdvancedBERTTrainer:
         
         print(f"模型已保存到: {output_dir}")
 
+    @classmethod
+    def load_model(cls, model_dir: str):
+        """从保存的目录加载模型用于推理"""
+        config_path = os.path.join(model_dir, "config.json")
+        model_path = os.path.join(model_dir, "pytorch_model.bin")
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+
+        trainer = cls.__new__(cls)
+        trainer.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        trainer.tokenizer = BertTokenizerFast.from_pretrained(model_dir)
+        trainer.label2id = config['label2id']
+        trainer.id2label = {int(v): k for k, v in config['label2id'].items()}
+        trainer.best_val_f1 = 0
+        trainer.best_val_loss = float('inf')
+        trainer.best_model_state = None
+        trainer.training_history = []
+        trainer.train_loader = None
+        trainer.val_loader = None
+        trainer.test_loader = None
+
+        num_labels = config['num_labels']
+        model_cfg = config.get('model_config', {})
+        trainer.model = BERTBiLSTMCRFEntityRecognizer(
+            num_labels=num_labels,
+            lstm_hidden_size=model_cfg.get('lstm_hidden_size', 256),
+            lstm_layers=model_cfg.get('lstm_layers', 2),
+        )
+        trainer.model.load_state_dict(torch.load(model_path, map_location=trainer.device))
+        trainer.model.to(trainer.device)
+        trainer.model.eval()
+        print(f"模型已从 {model_dir} 加载")
+        return trainer
+
+    def predict(self, texts, max_length: int = None):
+        """
+        对文本列表进行 NER 预测。
+
+        Args:
+            texts: 字符串或字符串列表
+            max_length: 最大序列长度
+
+        Returns:
+            列表, 每个元素是 [(实体文本, 实体类型, 起始位置, 结束位置), ...]
+        """
+        if self.model is None:
+            raise ValueError("模型未加载")
+        if isinstance(texts, str):
+            texts = [texts]
+        if max_length is None:
+            max_length = Config.MAX_SEQ_LENGTH
+
+        self.model.eval()
+        all_entities = []
+
+        with torch.no_grad():
+            for text in texts:
+                chars = list(text[:max_length - 2])
+                encoding = self.tokenizer(
+                    chars, is_split_into_words=True,
+                    max_length=max_length, padding='max_length',
+                    truncation=True, return_tensors='pt',
+                )
+                input_ids = encoding['input_ids'].to(self.device)
+                attention_mask = encoding['attention_mask'].to(self.device)
+
+                predictions = self.model(input_ids, attention_mask)
+                if isinstance(predictions, list):
+                    pred_ids = predictions[0]
+                else:
+                    pred_ids = predictions[0].tolist()
+
+                # 解码 BIOES 标签为实体
+                labels = [self.id2label.get(pid, 'O') for pid in pred_ids]
+                # 去掉 [CLS] 和 [SEP] 位置的标签
+                labels = labels[1:len(chars) + 1]
+
+                entities = []
+                i = 0
+                while i < len(labels):
+                    tag = labels[i]
+                    if tag.startswith('S-'):
+                        etype = tag[2:]
+                        entities.append((text[i], etype, i, i + 1))
+                        i += 1
+                    elif tag.startswith('B-'):
+                        etype = tag[2:]
+                        start = i
+                        i += 1
+                        while i < len(labels) and (labels[i].startswith('I-') or labels[i].startswith('E-')):
+                            if labels[i].startswith('E-'):
+                                i += 1
+                                break
+                            i += 1
+                        entities.append((text[start:i], etype, start, i))
+                    else:
+                        i += 1
+
+                all_entities.append(entities)
+
+        return all_entities
+
 def main():
     """主训练函数"""
     print("开始高级BERT模型训练...")

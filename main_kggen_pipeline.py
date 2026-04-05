@@ -138,35 +138,56 @@ class KGGenMathKnowledgePipeline:
 
         # Step 2: 训练 BERT+BiLSTM+CRF
         logger.info("步骤2: 训练 BERT+BiLSTM+CRF 模型...")
-        from bert_trainer_v2 import BERTMathNERTrainer
+        from bert_trainer_v2 import AdvancedBERTTrainer
 
-        # 将 DataFrame 转为训练器期望的格式
-        training_data = []
-        for _, row in train_df.iterrows():
-            training_data.append({
-                'text': row['text'],
-                'char_labels': row['char_labels'],
-            })
+        trainer = AdvancedBERTTrainer()
 
-        trainer = BERTMathNERTrainer(
-            model_dir=Config.MODEL_DIR,
-            max_length=Config.MAX_SEQ_LENGTH,
+        # 准备数据 (自动划分训练/验证/测试集)
+        trainer.prepare_data(
+            train_data_path,
             batch_size=batch_size,
-            learning_rate=learning_rate,
-            num_epochs=epochs,
+            val_split=0.1,
+            test_split=0.1,
+            use_bioes=True,
+            augment=True,
         )
 
-        train_results = trainer.train(training_data)
-        logger.info(f"训练完成! 最佳 F1: {train_results.get('best_f1', 'N/A')}")
+        # 初始化模型
+        num_labels = len(trainer.full_dataset.label2id)
+        trainer.initialize_model(num_labels, model_type="bert_bilstm_crf")
+        trainer.label2id = trainer.full_dataset.label2id
+        trainer.id2label = trainer.full_dataset.id2label
 
-        # Step 3: 评估
+        # 训练
+        history = trainer.train(
+            epochs=epochs,
+            learning_rate=learning_rate,
+            warmup_ratio=0.1,
+            early_stopping_patience=5,
+            gradient_accumulation_steps=2,
+            max_grad_norm=1.0,
+        )
+        logger.info(f"训练完成! 最佳验证 F1: {trainer.best_val_f1:.4f}")
+
+        # Step 3: 测试集评估
         logger.info("步骤3: 在测试集上评估...")
-        test_results = trainer.evaluate()
+        test_results = trainer.test()
+
+        # 保存模型
+        model_dir = os.path.join(Config.MODEL_DIR, "math_ner_advanced_model")
+        trainer.save_model(model_dir)
+        logger.info(f"模型已保存到: {model_dir}")
+
+        # 保存训练历史
+        history_path = os.path.join(Config.OUTPUT_DIR, "training_history.json")
+        with open(history_path, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
 
         return {
             'train_samples': len(train_df),
-            'training': train_results,
-            'evaluation': test_results,
+            'training_history': history,
+            'best_val_f1': trainer.best_val_f1,
+            'test_results': test_results,
         }
 
     # ================================================================

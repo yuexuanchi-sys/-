@@ -1,10 +1,122 @@
 from flask import Flask, request, jsonify, render_template
-from neo4j import GraphDatabase
 import json
 import re
 from config import Config
 
+try:
+    from neo4j import GraphDatabase
+    _neo4j_available = True
+except ImportError:
+    _neo4j_available = False
+
 app = Flask(__name__)
+
+# ================================================================
+# 离线数据源: 从 JSON 文件加载, 不依赖 Neo4j
+# ================================================================
+
+class OfflineGraphDataSource:
+    """从 output/kggen_entities.json + kggen_relations.json 加载图数据"""
+
+    def __init__(self, output_dir: str = None):
+        if output_dir is None:
+            output_dir = Config.OUTPUT_DIR
+        self.entities = []
+        self.relations = []
+        self._load(output_dir)
+
+    def _load(self, output_dir):
+        import os
+        ent_path = os.path.join(output_dir, 'kggen_entities.json')
+        rel_path = os.path.join(output_dir, 'kggen_relations.json')
+        if os.path.exists(ent_path):
+            with open(ent_path, 'r', encoding='utf-8') as f:
+                self.entities = json.load(f)
+        if os.path.exists(rel_path):
+            with open(rel_path, 'r', encoding='utf-8') as f:
+                self.relations = json.load(f)
+
+    # ------------ 颜色/类型映射 (与 Neo4j 版保持一致) --------
+    TYPE_COLORS = {
+        'CONCEPT': '#4A90D9', 'FORMULA': '#E8744F', 'THEOREM': '#67C23A',
+        'METHOD': '#F7BA2A', 'EXAMPLE': '#909399', 'PROPERTY': '#E6A23C',
+        'MODULE': '#5470c6', 'CHAPTER': '#91cc75',
+    }
+
+    def _node(self, e):
+        return {
+            'id': e['text'],
+            'label': e['text'],
+            'title': f"{e.get('type','')}: {e['text']}",
+            'color': self.TYPE_COLORS.get(e.get('type', ''), '#999'),
+            'level': 'concept',
+            'properties': {k: str(v) for k, v in e.items()},
+        }
+
+    def _edge(self, r):
+        return {
+            'from': r['subject'],
+            'to': r['object'],
+            'label': r['relation'],
+            'title': f"{r['subject']} —{r['relation']}→ {r['object']}",
+        }
+
+    def get_full_graph(self):
+        nodes_map = {}
+        for e in self.entities:
+            nodes_map[e['text']] = self._node(e)
+        edges = [self._edge(r) for r in self.relations
+                 if r['subject'] in nodes_map and r['object'] in nodes_map]
+        return {'nodes': list(nodes_map.values()), 'relationships': edges}
+
+    def get_all_chapters(self):
+        return [e['text'] for e in self.entities if e.get('type') == 'CHAPTER']
+
+    def find_knowledge_branch(self, node_name, max_depth=3):
+        children = set()
+        for r in self.relations:
+            if r['subject'] == node_name and r['relation'] == '包含':
+                children.add(r['object'])
+        nodes_map = {}
+        for e in self.entities:
+            if e['text'] == node_name or e['text'] in children:
+                nodes_map[e['text']] = self._node(e)
+        edges = [self._edge(r) for r in self.relations
+                 if r['subject'] in nodes_map and r['object'] in nodes_map]
+        return {'nodes': list(nodes_map.values()), 'relationships': edges}
+
+    def search_knowledge(self, keyword):
+        nodes_map = {}
+        for e in self.entities:
+            if keyword in e['text']:
+                nodes_map[e['text']] = self._node(e)
+        edges = [self._edge(r) for r in self.relations
+                 if r['subject'] in nodes_map and r['object'] in nodes_map]
+        return {'nodes': list(nodes_map.values()), 'relationships': edges}
+
+    def find_knowledge_path(self, start, end):
+        # BFS shortest path
+        from collections import deque
+        adj = {}
+        for r in self.relations:
+            adj.setdefault(r['subject'], []).append((r['object'], r))
+            adj.setdefault(r['object'], []).append((r['subject'], r))
+        visited = {start}
+        queue = deque([(start, [])])
+        while queue:
+            cur, path = queue.popleft()
+            if cur == end:
+                nodes_map = {}
+                for e in self.entities:
+                    if e['text'] in {start, end} or any(e['text'] in (r['subject'], r['object']) for r in path):
+                        nodes_map[e['text']] = self._node(e)
+                return {'nodes': list(nodes_map.values()), 'relationships': [self._edge(r) for r in path]}
+            for nbr, rel in adj.get(cur, []):
+                if nbr not in visited:
+                    visited.add(nbr)
+                    queue.append((nbr, path + [rel]))
+        return {'nodes': [], 'relationships': []}
+
 
 class MathKnowledgeGraph:
     def __init__(self):
@@ -511,19 +623,42 @@ class MathKnowledgeGraph:
             
             return {"nodes": nodes, "relationships": relationships}
 
-# 初始化知识图谱连接
-math_kg = MathKnowledgeGraph()
+# 初始化: 优先 Neo4j, 不可用时自动切换离线模式
+_offline = True
+_offline_ds = None
+math_kg = None
+
+if _neo4j_available:
+    try:
+        math_kg = MathKnowledgeGraph()
+        with math_kg.driver.session() as session:
+            session.run("RETURN 1")
+        _offline = False
+        print("[OK] Neo4j 连接成功，使用在线模式")
+    except Exception as e:
+        math_kg = None
+        print(f"[WARN] Neo4j 连接失败 ({e})，切换离线模式")
+else:
+    print("[INFO] neo4j 模块未安装，使用离线模式")
+
+if _offline:
+    _offline_ds = OfflineGraphDataSource()
+    print(f"[OK] 离线模式已就绪 (实体: {len(_offline_ds.entities)}, 关系: {len(_offline_ds.relations)})")
 
 @app.route('/')
 def index():
     return render_template('math_knowledge.html')
 
+def _ds():
+    """返回当前可用的数据源 (Neo4j 或 离线JSON)"""
+    return _offline_ds if _offline else math_kg
+
 @app.route('/api/full-graph')
 def get_full_graph():
     """获取完整的知识图谱"""
     try:
-        data = math_kg.get_full_graph()
-        return jsonify({"success": True, "data": data})
+        data = _ds().get_full_graph()
+        return jsonify({"success": True, "data": data, "offline": _offline})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -531,7 +666,7 @@ def get_full_graph():
 def get_chapters():
     """获取所有章节"""
     try:
-        chapters = math_kg.get_all_chapters()
+        chapters = _ds().get_all_chapters()
         return jsonify({"success": True, "data": chapters})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -541,7 +676,7 @@ def get_branch(node_name):
     """获取知识分支"""
     depth = request.args.get('depth', 3, type=int)
     try:
-        data = math_kg.find_knowledge_branch(node_name, depth)
+        data = _ds().find_knowledge_branch(node_name, depth)
         return jsonify({"success": True, "data": data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -551,12 +686,12 @@ def get_path():
     """查找知识路径"""
     start_node = request.args.get('start')
     end_node = request.args.get('end')
-    
+
     if not start_node or not end_node:
         return jsonify({"success": False, "error": "起始节点和目标节点不能为空"})
-    
+
     try:
-        data = math_kg.find_knowledge_path(start_node, end_node)
+        data = _ds().find_knowledge_path(start_node, end_node)
         return jsonify({"success": True, "data": data})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -567,9 +702,9 @@ def search_knowledge():
     keyword = request.args.get('q', '')
     if not keyword:
         return jsonify({"success": False, "error": "搜索关键词不能为空"})
-    
+
     try:
-        results = math_kg.search_knowledge(keyword)
+        results = _ds().search_knowledge(keyword)
         return jsonify({"success": True, "data": results})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -611,12 +746,19 @@ def get_related_nodes(node_name):
 @app.route('/api/health')
 def health_check():
     """健康检查端点"""
+    if _offline:
+        return jsonify({
+            'status': 'healthy',
+            'mode': 'offline',
+            'entities': len(_offline_ds.entities),
+            'relations': len(_offline_ds.relations),
+        })
     try:
-        # 简单的数据库连接检查
         with math_kg.driver.session() as session:
             session.run("RETURN 1 as test")
         return jsonify({
             'status': 'healthy',
+            'mode': 'neo4j',
             'database': 'connected'
         })
     except Exception as e:
