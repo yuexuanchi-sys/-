@@ -13,18 +13,20 @@ This project builds a **middle school math knowledge graph** using a **Hybrid Pi
 | File | Role |
 |------|------|
 | `config.py` | Central configuration (env vars via `.env`) |
-| `entity_recognizer_enhanced.py` | BERT+CRF char-level entity recognition |
-| `entity_extractor_kggen.py` | KGGen-enhanced entity extraction (ensemble) |
+| `data_loader.py` | Math textbook data loading (.docx) |
+| `enhanced_data_processor.py` | Text cleaning, BIOES NER data generation |
+| `entity_extractor_kggen.py` | Entity extraction (rules + POS + BERT ensemble) |
+| `relation_extractor_kggen.py` | Relation extraction (rules + patterns + LLM) |
+| `knowledge_graph_builder_kggen.py` | KG builder with entity quality filtering |
 | `kggen_client.py` | Cloud LLM API client (DeepSeek/KGGen) |
-| `relation_extractor_kggen.py` | LLM-powered relation extraction |
 | `neo4j_manager.py` | Neo4j database CRUD operations (py2neo) |
 | `main_kggen_pipeline.py` | Central pipeline orchestrator |
-| `knowledge_graph_builder_kggen.py` | Knowledge graph builder |
 | `bert_trainer_v2.py` | BERT+BiLSTM+CRF trainer (BIOES labels, augmentation) |
-| `data_loader.py` | Math textbook data loading |
-| `enhanced_data_processor.py` | Text cleaning, segmentation, NER data prep |
+| `evaluation.py` | Paper-grade evaluation (NER metrics, KG analysis) |
 | `app.py` | Flask web app for graph visualization |
-| `grade7_builder.py` | Grade 7 specific knowledge graph builder |
+| `performance_optimizer.py` | Performance monitoring utilities |
+| `run.py` | CLI entry point |
+| `test_pipeline.py` | Comprehensive test suite (9 tests) |
 
 ## Data Flow
 
@@ -32,10 +34,13 @@ This project builds a **middle school math knowledge graph** using a **Hybrid Pi
 Raw Text (textbook .docx files in data/)
     |
     v
-[entity_recognizer_enhanced.py]  -- Local BERT+CRF extracts math entities
+[entity_extractor_kggen.py]     -- Rules + POS + BERT extracts math entities
     |                                (concepts, formulas, theorems, etc.)
     v
-[relation_extractor_kggen.py]    -- Cloud LLM identifies relationships
+[knowledge_graph_builder_kggen.py] -- Multi-layer entity quality filtering
+    |                                  (stopwords, OCR noise, domain validation)
+    v
+[relation_extractor_kggen.py]    -- Rules + patterns + Cloud LLM for relations
     |  uses kggen_client.py          between extracted entities
     v
 [neo4j_manager.py]               -- Stores (entity, relation, entity) triples
@@ -56,7 +61,9 @@ All secrets and paths are read from environment variables. Copy `.env.example` t
 
 - Place textbook data files in `data/`
 - All core source code lives in the project root
-- `src/` contains compatibility re-exports for the original module layout
 - Run `pip install -r requirements.txt` for all dependencies
 - Use `python run.py web` to start the Flask visualization server
 - Use `python main_kggen_pipeline.py --mode hybrid` to run the full pipeline
+- Use `python main_kggen_pipeline.py --mode train` to train BERT NER model
+- Use `python main_kggen_pipeline.py --mode evaluate` to generate paper metrics
+- Use `python test_pipeline.py` to run the test suite

@@ -92,13 +92,62 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
     if len(text) <= 1:
         return False
 
+    # ── METHOD 类型: 只接受含"法/方法/步骤/算法"的条目 ──
+    if entity_type == 'METHOD':
+        method_keywords = {'法', '方法', '步骤', '算法', '解法', '作法', '画法'}
+        if not any(kw in text for kw in method_keywords):
+            return False
+        # 排除句子片段 (>8字且不以"法"结尾多半是片段)
+        if len(text) > 8 and not text.endswith('法'):
+            return False
+
+    # ── EXAMPLE 类型: 只接受含"例/题"的条目 ──
+    if entity_type == 'EXAMPLE':
+        if not any(kw in text for kw in ['例', '题', '问题']):
+            return False
+
     # ── 纯英文 / 英文+数字 / OCR 噪声 ──
-    # 只保留明确的数学英文术语或含运算符的公式
     stripped_ascii = text.replace(' ', '')
     if stripped_ascii.isascii():
-        # 允许含数学运算符的公式: a+b=c, x²+y²=z², a/b 等
+        # 过长的纯ASCII → OCR表格噪声 (如 "A B C x 2 1 0 1 2...")
+        if len(text) > 20:
+            return False
+        # 含空格 → OCR拼接噪声 (如 "A B=2 5", "B D =4cm", "a=0 72m")
+        if ' ' in text:
+            return False
+        # 纯几何标记 (AB, CD, AB+BC, AB=DF)
+        if re.fullmatch(r'[A-Z\s+=]+', text.strip()):
+            return False
+        # 含大写几何点标记赋值 (AB=10, AB=2cm, AB=AC=a 等)
+        # 这些是题目具体条件，不是通用公式
+        if re.search(r'[A-Z]{2}\s*=', text):
+            return False
+        # 允许含数学运算符的公式: a+b=c, x²+y²=z², 2x-3=0 等
         if re.search(r'[+\-*/=<>≤≥≈≠^²³√∑∏∫πθ]', text):
-            return True
+            # 必须含小写变量 (代数表达式特征)
+            if not re.search(r'[a-z]', text):
+                return False
+            # 具体数值赋值 (a=3, a=5cm, R=40mm 等) → 题目条件
+            if re.fullmatch(r'[A-Za-z]\s*=\s*[\d.]+\s*(?:cm|m|mm|km|°|%)?', text.strip()):
+                return False
+            # 多个赋值 (a=3 b=2, a=5cm b=2cm 等)
+            if re.fullmatch(r'(?:[a-zA-Z]\s*=\s*[\d.]+\s*(?:cm|m|mm|°)?\s*)+\d*', text.strip()):
+                return False
+            # 简单比较/不等 (a<0, a>2, a<10) → 太泛
+            if re.fullmatch(r'[a-z]\s*[<>=]+\s*[\d.]+\s*\d*', text.strip()):
+                return False
+            # 简单表达式 (a+b, a+2, a+2b) 少于5字符 → 太泛
+            if len(text.strip()) < 5:
+                return False
+            # 需要等号的代数恒等式或含函数/指数的表达式才有意义
+            has_equality = '=' in text
+            has_power = re.search(r'[²³^]', text)
+            has_function = re.search(r'(sin|cos|tan|log|ln|sqrt|π)', text)
+            has_structure = re.search(r'[a-z]\s*[+\-*/]\s*[a-z]', text) and has_equality
+            if not (has_equality or has_power or has_function or has_structure):
+                return False
+            alphanums = set(re.findall(r'[A-Za-z]\w*|\d+', text))
+            return len(alphanums) >= 2
         # 允许少量已知英文数学术语
         math_en = {'sin', 'cos', 'tan', 'log', 'ln', 'lim', 'max', 'min'}
         if text.lower().strip() in math_en:
@@ -107,13 +156,12 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
         return False
 
     # ── 中文实体质量检查 ──
-    # 计算中文字符比例
     chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
     if chinese_chars == 0:
-        return False  # 没有中文字符的非 ASCII 文本
+        return False
 
-    # 句子片段检测: 以数字开头(编号)、含"的"结尾、含"吗/呢/了"等语气词
-    if re.match(r'^\d+\s', text):  # "12 根据相反数的"
+    # 句子片段检测
+    if re.match(r'^\d+\s', text):
         return False
     if text.endswith('的') or text.endswith('了') or text.endswith('吗'):
         return False
@@ -121,7 +169,9 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
                                 '上面', '举出', '利用', '按照', '仿照',
                                 '设计', '选择', '尝试', '比较', '什么',
                                 '分别', '们将', '是否', '如何', '怎样',
-                                '哪些', '能否', '它们']):
+                                '哪些', '能否', '它们', '可以', '应该',
+                                '已经', '学习', '学过', '学到', '学期',
+                                '我们', '这些', '那些']):
         return False
     # 含空格的中文短语多是OCR噪声拼接
     if ' ' in text and chinese_chars < len(text) * 0.5:
@@ -147,10 +197,9 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
         '等式', '代数', '算术', '运算', '简化',
     }
 
-    # 短实体 (2-6字) → 必须包含数学关键词或是已知概念
+    # 短实体 (2-6字) → 必须包含数学关键词
     if len(text) <= 6:
         if any(kw in text for kw in math_keywords):
-            # 额外排除: 虽含数学字但实际是非数学词
             non_math_with_keywords = {
                 '体温', '体会', '体书', '体型', '体形', '体育课',
                 '体积小', '亮度', '人形', '角色', '角落', '形式',
