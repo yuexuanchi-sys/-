@@ -1,0 +1,153 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "color": "#4A90D9",
+        "id": "三角形",
+        "label": "三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "301",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.1.docx",
+          "start": "298",
+          "text": "三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "直角三角形",
+        "label": "直角三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "140",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.1.docx",
+          "start": "135",
+          "text": "直角三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 直角三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "全等三角形",
+        "label": "全等三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "145",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.2.docx",
+          "start": "140",
+          "text": "全等三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 全等三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "等腰三角形",
+        "label": "等腰三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "330",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.2.docx",
+          "start": "325",
+          "text": "等腰三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 等腰三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "等边三角形",
+        "label": "等边三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "353",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.2.docx",
+          "start": "348",
+          "text": "等边三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 等边三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "相似三角形",
+        "label": "相似三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "85",
+          "grade": "9",
+          "source": "rule",
+          "source_file": "9.1.docx",
+          "start": "80",
+          "text": "相似三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 相似三角形"
+      }
+    ],
+    "relationships": [
+      {
+        "from": "等边三角形",
+        "label": "属于",
+        "title": "等边三角形 —属于→ 等腰三角形",
+        "to": "等腰三角形"
+      },
+      {
+        "from": "等腰三角形",
+        "label": "属于",
+        "title": "等腰三角形 —属于→ 等边三角形",
+        "to": "等边三角形"
+      },
+      {
+        "from": "全等三角形",
+        "label": "相关概念",
+        "title": "全等三角形 —相关概念→ 等腰三角形",
+        "to": "等腰三角形"
+      },
+      {
+        "from": "全等三角形",
+        "label": "推导关系",
+        "title": "全等三角形 —推导关系→ 直角三角形",
+        "to": "直角三角形"
+      },
+      {
+        "from": "三角形",
+        "label": "相关概念",
+        "title": "三角形 —相关概念→ 相似三角形",
+        "to": "相似三角形"
+      },
+      {
+        "from": "相似三角形",
+        "label": "相关概念",
+        "title": "相似三角形 —相关概念→ 三角形",
+        "to": "三角形"
+      }
+    ]
+  },
+  "success": true
+}

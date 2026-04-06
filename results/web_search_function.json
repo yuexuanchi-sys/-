@@ -1,0 +1,141 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "color": "#4A90D9",
+        "id": "函数",
+        "label": "函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "105",
+          "grade": "8",
+          "source": "rule",
+          "source_file": "8.1.docx",
+          "start": "103",
+          "text": "函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "一次函数",
+        "label": "一次函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "110",
+          "grade": "8",
+          "source": "rule",
+          "source_file": "8.1.docx",
+          "start": "106",
+          "text": "一次函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 一次函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "正比例函数",
+        "label": "正比例函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "310",
+          "grade": "8",
+          "source": "rule",
+          "source_file": "8.1.docx",
+          "start": "305",
+          "text": "正比例函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 正比例函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "反比例函数",
+        "label": "反比例函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "194",
+          "grade": "9",
+          "source": "rule",
+          "source_file": "9.1.docx",
+          "start": "189",
+          "text": "反比例函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 反比例函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "二次函数",
+        "label": "二次函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "389",
+          "grade": "9",
+          "source": "rule",
+          "source_file": "9.2.docx",
+          "start": "385",
+          "text": "二次函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 二次函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "锐角三角函数",
+        "label": "锐角三角函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "71",
+          "grade": "9",
+          "source": "rule",
+          "source_file": "9.2.docx",
+          "start": "65",
+          "text": "锐角三角函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 锐角三角函数"
+      }
+    ],
+    "relationships": [
+      {
+        "from": "一次函数",
+        "label": "相关概念",
+        "title": "一次函数 —相关概念→ 反比例函数",
+        "to": "反比例函数"
+      },
+      {
+        "from": "反比例函数",
+        "label": "相关概念",
+        "title": "反比例函数 —相关概念→ 函数",
+        "to": "函数"
+      },
+      {
+        "from": "反比例函数",
+        "label": "相关概念",
+        "title": "反比例函数 —相关概念→ 一次函数",
+        "to": "一次函数"
+      },
+      {
+        "from": "函数",
+        "label": "相关概念",
+        "title": "函数 —相关概念→ 反比例函数",
+        "to": "反比例函数"
+      }
+    ]
+  },
+  "success": true
+}

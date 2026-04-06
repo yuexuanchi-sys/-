@@ -1,0 +1,159 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "color": "#4A90D9",
+        "id": "三角形",
+        "label": "三角形",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "301",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.1.docx",
+          "start": "298",
+          "text": "三角形",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 三角形"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "轴对称",
+        "label": "轴对称",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "0.6",
+          "end": "350",
+          "grade": "7",
+          "source": "pos",
+          "source_file": "7.2.docx",
+          "start": "347",
+          "text": "轴对称",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 轴对称"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "垂直",
+        "label": "垂直",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "1.0",
+          "end": "119",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.2.docx",
+          "start": "117",
+          "text": "垂直",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 垂直"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "对称轴",
+        "label": "对称轴",
+        "level": "concept",
+        "properties": {
+          "chapter": "2",
+          "confidence": "0.6",
+          "end": "108",
+          "grade": "7",
+          "source": "pos",
+          "source_file": "7.2.docx",
+          "start": "105",
+          "text": "对称轴",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 对称轴"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "函数",
+        "label": "函数",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "105",
+          "grade": "8",
+          "source": "rule",
+          "source_file": "8.1.docx",
+          "start": "103",
+          "text": "函数",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 函数"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "平方和",
+        "label": "平方和",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "0.6",
+          "end": "392",
+          "grade": "8",
+          "source": "pos",
+          "source_file": "8.1.docx",
+          "start": "389",
+          "text": "平方和",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 平方和"
+      }
+    ],
+    "relationships": [
+      {
+        "from": "三角形",
+        "label": "包含",
+        "title": "三角形 —包含→ 垂直",
+        "to": "垂直"
+      },
+      {
+        "from": "三角形",
+        "label": "定义",
+        "title": "三角形 —定义→ 垂直",
+        "to": "垂直"
+      },
+      {
+        "from": "三角形",
+        "label": "包含",
+        "title": "三角形 —包含→ 轴对称",
+        "to": "轴对称"
+      },
+      {
+        "from": "三角形",
+        "label": "包含",
+        "title": "三角形 —包含→ 对称轴",
+        "to": "对称轴"
+      },
+      {
+        "from": "三角形",
+        "label": "包含",
+        "title": "三角形 —包含→ 平方和",
+        "to": "平方和"
+      },
+      {
+        "from": "三角形",
+        "label": "相关概念",
+        "title": "三角形 —相关概念→ 函数",
+        "to": "函数"
+      },
+      {
+        "from": "三角形",
+        "label": "包含",
+        "title": "三角形 —包含→ 函数",
+        "to": "函数"
+      }
+    ]
+  },
+  "success": true
+}

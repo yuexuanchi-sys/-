@@ -1,0 +1,159 @@
+{
+  "data": {
+    "nodes": [
+      {
+        "color": "#4A90D9",
+        "id": "方程",
+        "label": "方程",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "210",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.1.docx",
+          "start": "208",
+          "text": "方程",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 方程"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "一元一次方程",
+        "label": "一元一次方程",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "139",
+          "grade": "7",
+          "source": "rule",
+          "source_file": "7.1.docx",
+          "start": "133",
+          "text": "一元一次方程",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 一元一次方程"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "二元一次方程组",
+        "label": "二元一次方程组",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "120",
+          "grade": "8",
+          "source": "rule",
+          "source_file": "8.1.docx",
+          "start": "113",
+          "text": "二元一次方程组",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 二元一次方程组"
+      },
+      {
+        "color": "#4A90D9",
+        "id": "一元二次方程",
+        "label": "一元二次方程",
+        "level": "concept",
+        "properties": {
+          "chapter": "1",
+          "confidence": "1.0",
+          "end": "327",
+          "grade": "9",
+          "source": "rule",
+          "source_file": "9.1.docx",
+          "start": "321",
+          "text": "一元二次方程",
+          "type": "CONCEPT"
+        },
+        "title": "CONCEPT: 一元二次方程"
+      }
+    ],
+    "relationships": [
+      {
+        "from": "一元一次方程",
+        "label": "应用",
+        "title": "一元一次方程 —应用→ 方程",
+        "to": "方程"
+      },
+      {
+        "from": "方程",
+        "label": "推导关系",
+        "title": "方程 —推导关系→ 一元一次方程",
+        "to": "一元一次方程"
+      },
+      {
+        "from": "方程",
+        "label": "应用",
+        "title": "方程 —应用→ 一元一次方程",
+        "to": "一元一次方程"
+      },
+      {
+        "from": "方程",
+        "label": "相关概念",
+        "title": "方程 —相关概念→ 一元一次方程",
+        "to": "一元一次方程"
+      },
+      {
+        "from": "一元一次方程",
+        "label": "推导关系",
+        "title": "一元一次方程 —推导关系→ 二元一次方程组",
+        "to": "二元一次方程组"
+      },
+      {
+        "from": "二元一次方程组",
+        "label": "推导关系",
+        "title": "二元一次方程组 —推导关系→ 方程",
+        "to": "方程"
+      },
+      {
+        "from": "二元一次方程组",
+        "label": "应用",
+        "title": "二元一次方程组 —应用→ 一元一次方程",
+        "to": "一元一次方程"
+      },
+      {
+        "from": "二元一次方程组",
+        "label": "应用",
+        "title": "二元一次方程组 —应用→ 方程",
+        "to": "方程"
+      },
+      {
+        "from": "方程",
+        "label": "推导关系",
+        "title": "方程 —推导关系→ 二元一次方程组",
+        "to": "二元一次方程组"
+      },
+      {
+        "from": "二元一次方程组",
+        "label": "相关概念",
+        "title": "二元一次方程组 —相关概念→ 方程",
+        "to": "方程"
+      },
+      {
+        "from": "方程",
+        "label": "相关概念",
+        "title": "方程 —相关概念→ 二元一次方程组",
+        "to": "二元一次方程组"
+      },
+      {
+        "from": "方程",
+        "label": "相关概念",
+        "title": "方程 —相关概念→ 一元二次方程",
+        "to": "一元二次方程"
+      },
+      {
+        "from": "一元二次方程",
+        "label": "相关概念",
+        "title": "一元二次方程 —相关概念→ 方程",
+        "to": "方程"
+      }
+    ]
+  },
+  "success": true
+}
