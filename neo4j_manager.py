@@ -196,6 +196,10 @@ class Neo4jManager:
             print("离线模式: 无法查询关系，返回空列表")
             return []
             
+        if relation_type and not relation_type.replace('_', '').isalnum():
+            print(f"非法关系类型: {relation_type}")
+            return []
+
         if subject and relation_type and object_:
             query = f"""
             MATCH (s {{name: $subject}})-[r:{relation_type}]->(o {{name: $object}})

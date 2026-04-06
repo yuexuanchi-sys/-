@@ -372,7 +372,8 @@ class KnowledgeGraphAnalyzer:
 
     def _build_graph(self):
         """构建邻接表"""
-        self.adj = defaultdict(set)
+        self.adj = defaultdict(set)       # 有向
+        self.adj_undirected = defaultdict(set)  # 无向 (用于连通分量)
         self.in_degree = defaultdict(int)
         self.out_degree = defaultdict(int)
         self.nodes = {e['text'] for e in self.entities}
@@ -382,6 +383,8 @@ class KnowledgeGraphAnalyzer:
             obj = r.get('object', '')
             if subj and obj:
                 self.adj[subj].add(obj)
+                self.adj_undirected[subj].add(obj)
+                self.adj_undirected[obj].add(subj)
                 self.out_degree[subj] += 1
                 self.in_degree[obj] += 1
 
@@ -410,7 +413,7 @@ class KnowledgeGraphAnalyzer:
                     if current in visited:
                         continue
                     visited.add(current)
-                    for neighbor in self.adj.get(current, set()):
+                    for neighbor in self.adj_undirected.get(current, set()):
                         if neighbor not in visited:
                             queue.append(neighbor)
 

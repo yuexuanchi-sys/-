@@ -8,6 +8,7 @@ KGGen增强的关系提取器
 4. KGGen API 关系提取 (可选)
 """
 
+import os
 import torch
 import torch.nn as nn
 from transformers import BertModel, BertTokenizer
@@ -41,19 +42,24 @@ class KGGenEnhancedRelationExtractor:
             except Exception as e:
                 logger.warning(f"KGGen客户端初始化失败: {e}")
 
-        # BERT模型 (可选)
+        # BERT关系分类模型 (仅当有训练好的权重时才加载)
         self.model_loaded = False
         self.tokenizer = None
         self.model = None
-        try:
-            self.tokenizer = BertTokenizer.from_pretrained(Config.BERT_MODEL)
-            self.model = BERTRelationExtractor(len(self.relation2id))
-            self.model.to(self.device)
-            self.model_loaded = True
-            logger.info("[OK] 关系抽取BERT模型加载成功")
-        except Exception as e:
-            logger.warning(f"关系抽取BERT模型加载失败: {e}")
-            logger.warning("将使用基于规则和KGGen的方法进行关系抽取")
+        rel_model_path = os.path.join(Config.MODEL_DIR, "relation_model", "pytorch_model.bin")
+        if os.path.exists(rel_model_path):
+            try:
+                self.tokenizer = BertTokenizer.from_pretrained(Config.BERT_MODEL)
+                self.model = BERTRelationExtractor(len(self.relation2id))
+                self.model.load_state_dict(torch.load(rel_model_path, map_location=self.device))
+                self.model.to(self.device)
+                self.model.eval()
+                self.model_loaded = True
+                logger.info("[OK] 关系抽取BERT模型加载成功 (已训练权重)")
+            except Exception as e:
+                logger.warning(f"关系抽取BERT模型加载失败: {e}")
+        else:
+            logger.info("[INFO] 关系抽取BERT模型未训练，使用规则+KGGen方法")
 
         # ============================================================
         # 规则模板 — 覆盖初中数学教材的常见表达
@@ -261,8 +267,12 @@ class KGGenEnhancedRelationExtractor:
                     if distance > 40:
                         continue
 
-                    between_start = min(pos1 + len(e1['text']), pos2 + len(e2['text']))
-                    between_end = max(pos1, pos2)
+                    if pos1 <= pos2:
+                        between_start = pos1 + len(e1['text'])
+                        between_end = pos2
+                    else:
+                        between_start = pos2 + len(e2['text'])
+                        between_end = pos1
                     between_text = sentence[between_start:between_end] if between_start < between_end else ''
 
                     # 必须有明确的关系线索词 (不再默认推断 RELATED)

@@ -45,13 +45,13 @@ class TestRunner:
             elapsed = time.time() - start
             self.results[name] = {'status': 'PASS', 'elapsed': round(elapsed, 2), 'detail': result}
             self.passed += 1
-            print(f"  ✓ PASS ({elapsed:.2f}s)")
+            print(f"  [PASS] ({elapsed:.2f}s)")
             return True
         except Exception as e:
             elapsed = time.time() - start
             self.results[name] = {'status': 'FAIL', 'elapsed': round(elapsed, 2), 'error': str(e)}
             self.failed += 1
-            print(f"  ✗ FAIL ({elapsed:.2f}s): {e}")
+            print(f"  [FAIL] ({elapsed:.2f}s): {e}")
             traceback.print_exc()
             return False
 
@@ -60,7 +60,7 @@ class TestRunner:
         print(f"测试结果: {self.passed} 通过, {self.failed} 失败, 共 {self.passed + self.failed} 项")
         print(f"{'='*60}")
         for name, r in self.results.items():
-            status = "✓" if r['status'] == 'PASS' else "✗"
+            status = "[PASS]" if r['status'] == 'PASS' else "[FAIL]"
             print(f"  {status} {name} ({r['elapsed']}s)")
         return self.failed == 0
 
@@ -261,6 +261,8 @@ def test_paper_metrics():
 
     if not os.path.exists(entities_path):
         return "SKIP: 无已有输出文件"
+    if not os.path.exists(relations_path):
+        return "SKIP: 无关系输出文件"
 
     from evaluation import generate_paper_metrics
 

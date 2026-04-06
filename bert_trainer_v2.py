@@ -17,6 +17,18 @@ import numpy as np
 import random
 from sklearn.model_selection import train_test_split
 
+
+class _NumpyEncoder(json.JSONEncoder):
+    """处理numpy类型的JSON序列化"""
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 # 可复现性
 SEED = 42
 random.seed(SEED)
@@ -210,19 +222,21 @@ class BERTBiLSTMCRFEntityRecognizer(nn.Module):
         # Dropout层
         self.dropout = nn.Dropout(dropout_rate)
         
-        # BiLSTM层
-        self.lstm = nn.LSTM(
-            input_size=self.bert_hidden_size,
-            hidden_size=lstm_hidden_size,
-            num_layers=lstm_layers,
-            batch_first=True,
-            bidirectional=use_bidirectional,
-            dropout=dropout_rate if lstm_layers > 1 else 0
-        )
-        
-        # 根据双向LSTM调整输出维度
-        lstm_output_size = lstm_hidden_size * 2 if use_bidirectional else lstm_hidden_size
-        
+        # BiLSTM层 (当lstm_hidden_size>0时启用)
+        self.use_lstm = lstm_hidden_size > 0
+        if self.use_lstm:
+            self.lstm = nn.LSTM(
+                input_size=self.bert_hidden_size,
+                hidden_size=lstm_hidden_size,
+                num_layers=lstm_layers,
+                batch_first=True,
+                bidirectional=use_bidirectional,
+                dropout=dropout_rate if lstm_layers > 1 else 0
+            )
+            lstm_output_size = lstm_hidden_size * 2 if use_bidirectional else lstm_hidden_size
+        else:
+            lstm_output_size = self.bert_hidden_size
+
         # 分类层
         self.classifier = nn.Linear(lstm_output_size, num_labels)
         
@@ -236,10 +250,13 @@ class BERTBiLSTMCRFEntityRecognizer(nn.Module):
         
         # Dropout
         sequence_output = self.dropout(sequence_output)
-        
-        # LSTM处理
-        lstm_output, _ = self.lstm(sequence_output)
-        lstm_output = self.dropout(lstm_output)
+
+        # LSTM处理 (可选)
+        if self.use_lstm:
+            lstm_output, _ = self.lstm(sequence_output)
+            lstm_output = self.dropout(lstm_output)
+        else:
+            lstm_output = sequence_output
         
         # 分类层
         logits = self.classifier(lstm_output)
@@ -249,6 +266,22 @@ class BERTBiLSTMCRFEntityRecognizer(nn.Module):
             return loss.mean()
         else:
             return self.crf.viterbi_decode(logits, mask=attention_mask.bool())
+
+    def forward_with_loss_and_decode(self, input_ids, attention_mask, labels):
+        """单次前向传播同时返回loss和解码结果，避免双次推理"""
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        sequence_output = outputs.last_hidden_state
+        sequence_output = self.dropout(sequence_output)
+        if self.use_lstm:
+            lstm_output, _ = self.lstm(sequence_output)
+            lstm_output = self.dropout(lstm_output)
+        else:
+            lstm_output = sequence_output
+        logits = self.classifier(lstm_output)
+        mask = attention_mask.bool()
+        loss = -self.crf(logits, labels, mask=mask)
+        predictions = self.crf.viterbi_decode(logits, mask=mask)
+        return loss.mean(), predictions
 
 class AdvancedBERTTrainer:
     """高级BERT模型训练器，支持多种优化技术"""
@@ -441,40 +474,39 @@ class AdvancedBERTTrainer:
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
                 
-                loss = self.model(input_ids, attention_mask, labels)
+                loss, predictions = self.model.forward_with_loss_and_decode(input_ids, attention_mask, labels)
                 total_loss += loss.item()
-                
-                # 获取预测结果
-                predictions = self.model(input_ids, attention_mask)
-                
+
                 # 转换标签为可读格式
                 batch_true_labels = []
                 batch_predictions = []
-                
-                # 将attention_mask和labels移动到CPU用于评估
+
                 attention_mask_cpu = attention_mask.cpu()
                 labels_cpu = labels.cpu()
-                
+
                 for i in range(len(labels)):
-                    mask = attention_mask_cpu[i].bool()  # mask在CPU上
+                    mask = attention_mask_cpu[i].bool()
                     true_label_ids = labels_cpu[i][mask].numpy()
-                    # 将预测结果移动到CPU
-                    pred_label_ids = predictions[i][:len(true_label_ids)].cpu().numpy()
-                    
-                    true_labels = [self.id2label.get(id_, 'O')
+                    pred_seq = predictions[i]
+                    if hasattr(pred_seq, 'cpu'):
+                        pred_label_ids = pred_seq[:len(true_label_ids)].cpu().numpy()
+                    else:
+                        pred_label_ids = pred_seq[:len(true_label_ids)]
+
+                    true_labels = [self.id2label.get(int(id_), 'O')
                                   for id_ in true_label_ids]
-                    pred_labels = [self.id2label.get(id_, 'O')
+                    pred_labels = [self.id2label.get(int(id_), 'O')
                                   for id_ in pred_label_ids]
-                    
+
                     batch_true_labels.append(true_labels)
                     batch_predictions.append(pred_labels)
-                
+
                 all_true_labels.extend(batch_true_labels)
                 all_predictions.extend(batch_predictions)
-        
+
         avg_loss = total_loss / len(self.val_loader)
         metrics = self._compute_detailed_metrics(all_true_labels, all_predictions)
-        
+
         self.model.train()
         return avg_loss, metrics
     
@@ -502,12 +534,16 @@ class AdvancedBERTTrainer:
                 for i in range(len(predictions)):
                     mask = attention_mask_cpu[i].bool()  # mask在CPU上
                     true_label_ids = labels_cpu[i][mask].numpy()
-                    # 将预测结果移动到CPU
-                    pred_label_ids = predictions[i][:len(true_label_ids)].cpu().numpy()
-                    
-                    true_labels = [self.id2label.get(id_, 'O')
+                    # CRF decode返回list, 取对应长度
+                    pred_seq = predictions[i]
+                    if hasattr(pred_seq, 'cpu'):
+                        pred_label_ids = pred_seq[:len(true_label_ids)].cpu().numpy()
+                    else:
+                        pred_label_ids = pred_seq[:len(true_label_ids)]
+
+                    true_labels = [self.id2label.get(int(id_), 'O')
                                   for id_ in true_label_ids]
-                    pred_labels = [self.id2label.get(id_, 'O')
+                    pred_labels = [self.id2label.get(int(id_), 'O')
                                   for id_ in pred_label_ids]
                     
                     all_true_labels.append(true_labels)
@@ -606,8 +642,8 @@ class AdvancedBERTTrainer:
         
         config_path = os.path.join(output_dir, "config.json")
         with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
-        
+            json.dump(config, f, ensure_ascii=False, indent=2, cls=_NumpyEncoder)
+
         # 保存训练信息
         info_path = os.path.join(output_dir, "training_info.json")
         training_info = {
@@ -618,7 +654,7 @@ class AdvancedBERTTrainer:
             "training_history": self.training_history
         }
         with open(info_path, 'w', encoding='utf-8') as f:
-            json.dump(training_info, f, ensure_ascii=False, indent=2)
+            json.dump(training_info, f, ensure_ascii=False, indent=2, cls=_NumpyEncoder)
         
         print(f"模型已保存到: {output_dir}")
 

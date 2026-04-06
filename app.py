@@ -712,6 +712,8 @@ def search_knowledge():
 @app.route('/api/level/<level_type>')
 def get_by_level(level_type):
     """按层级获取知识"""
+    if _offline:
+        return jsonify({"success": False, "error": "离线模式不支持层级查询"})
     try:
         results = math_kg.get_knowledge_by_level(level_type)
         return jsonify({"success": True, "data": results})
@@ -721,6 +723,8 @@ def get_by_level(level_type):
 @app.route('/api/chapter/<chapter_id>')
 def get_chapter_structure(chapter_id):
     """获取章节结构"""
+    if _offline:
+        return jsonify({"success": False, "error": "离线模式不支持章节查询"})
     try:
         structure = math_kg.get_chapter_structure(chapter_id)
         return jsonify({"success": True, "data": structure})
@@ -730,6 +734,8 @@ def get_chapter_structure(chapter_id):
 @app.route('/api/related-nodes/<node_name>')
 def get_related_nodes(node_name):
     """获取相关节点"""
+    if _offline:
+        return jsonify({"success": False, "error": "离线模式不支持关联查询"})
     try:
         with math_kg.driver.session() as session:
             result = session.run("""
@@ -771,6 +777,8 @@ def health_check():
 @app.route('/api/test-data')
 def test_data():
     """测试数据端点，用于验证数据格式"""
+    if _offline:
+        return jsonify({"success": False, "error": "离线模式不支持测试数据查询"})
     try:
         # 测试获取根分类数据
         with math_kg.driver.session() as session:

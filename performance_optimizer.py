@@ -61,7 +61,7 @@ class PerformanceMonitor:
             'device_count': torch.cuda.device_count(),
             'current_memory_allocated_mb': torch.cuda.memory_allocated() / 1024 / 1024,
             'max_memory_allocated_mb': torch.cuda.max_memory_allocated() / 1024 / 1024,
-            'memory_cached_mb': torch.cuda.memory_cached() / 1024 / 1024
+            'memory_cached_mb': torch.cuda.memory_reserved() / 1024 / 1024
         }
         
     def print_stats(self):
