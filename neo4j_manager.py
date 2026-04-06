@@ -196,9 +196,11 @@ class Neo4jManager:
             print("离线模式: 无法查询关系，返回空列表")
             return []
             
-        if relation_type and not relation_type.replace('_', '').isalnum():
-            print(f"非法关系类型: {relation_type}")
-            return []
+        if relation_type:
+            import re
+            if not re.match(r'^[\w\u4e00-\u9fff]+$', relation_type):
+                print(f"非法关系类型: {relation_type}")
+                return []
 
         if subject and relation_type and object_:
             query = f"""
@@ -233,12 +235,14 @@ class Neo4jManager:
         if not self.connected:
             print("离线模式: 无法获取知识路径，返回空列表")
             return []
-            
-        query = """
-        MATCH path = shortestPath((s {name: $start})-[*1..$max_depth]-(e {name: $end}))
+
+        # Neo4j不支持参数化的变长关系边界，需安全地内联
+        max_depth = max(1, min(int(max_depth), 10))
+        query = f"""
+        MATCH path = shortestPath((s {{name: $start}})-[*1..{max_depth}]-(e {{name: $end}}))
         RETURN path
         """
-        result = self.graph.run(query, start=start_entity, end=end_entity, max_depth=max_depth)
+        result = self.graph.run(query, start=start_entity, end=end_entity)
         
         paths = []
         for record in result:

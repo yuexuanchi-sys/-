@@ -308,12 +308,7 @@ class KGGenEnhancedRelationExtractor:
         if any(kw in bt for kw in ['与', '类似', '对应', '互为', '逆']):
             return 'RELATED'
 
-        # 类型推断: THEOREM/METHOD → CONCEPT
-        if e1.get('type') == 'THEOREM' and e2.get('type') == 'CONCEPT':
-            return 'APPLIES'
-        if e1.get('type') == 'METHOD' and e2.get('type') == 'CONCEPT':
-            return 'APPLIES'
-
+        # 不做纯类型推断，避免无上下文信号的虚假关系
         return None
 
     # ================================================================

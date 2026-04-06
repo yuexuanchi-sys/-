@@ -15,7 +15,6 @@ from config import Config
 from tqdm import tqdm
 import numpy as np
 import random
-from sklearn.model_selection import train_test_split
 
 
 class _NumpyEncoder(json.JSONEncoder):
@@ -130,18 +129,21 @@ class CharLevelMathNERDataset(Dataset):
                     'char_labels': aug_labels
                 })
         
-        # 2. 随机插入（5%的概率）
+        # 2. 随机插入（5%的概率，仅在O标签位置插入以保持BIOES一致性）
         if random.random() < 0.05:
-            insert_pos = random.randint(0, len(text))
-            insert_char = random.choice(['，', '。', '；', '：'])
-            
-            aug_text = text[:insert_pos] + insert_char + text[insert_pos:]
-            aug_labels = char_labels[:insert_pos] + ['O'] + char_labels[insert_pos:]
-            
-            augmented_items.append({
-                'text': aug_text,
-                'char_labels': aug_labels
-            })
+            # 只在O标签位置插入，避免破坏实体内部的BIOES序列
+            o_positions = [i for i, label in enumerate(char_labels) if label == 'O']
+            if o_positions:
+                insert_pos = random.choice(o_positions)
+                insert_char = random.choice(['，', '。', '；', '：'])
+
+                aug_text = text[:insert_pos] + insert_char + text[insert_pos:]
+                aug_labels = char_labels[:insert_pos] + ['O'] + char_labels[insert_pos:]
+
+                augmented_items.append({
+                    'text': aug_text,
+                    'char_labels': aug_labels
+                })
         
         # 3. 随机删除（5%的概率）
         if random.random() < 0.05:
@@ -317,18 +319,15 @@ class AdvancedBERTTrainer:
         # 保存完整数据集引用以便后续使用
         self.full_dataset = full_dataset
         
-        # 数据集分割
+        # 数据集分割 (使用torch.utils.data.random_split保持Dataset类型)
         dataset_size = len(full_dataset)
         val_size = int(dataset_size * val_split)
         test_size = int(dataset_size * test_split)
         train_size = dataset_size - val_size - test_size
-        
-        # 随机分割数据集
-        train_dataset, temp_dataset = train_test_split(
-            full_dataset, test_size=val_size + test_size, random_state=42
-        )
-        val_dataset, test_dataset = train_test_split(
-            temp_dataset, test_size=test_size, random_state=42
+
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
+            full_dataset, [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(42)
         )
         
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size, 
@@ -440,7 +439,7 @@ class AdvancedBERTTrainer:
             if val_f1 > self.best_val_f1:
                 self.best_val_f1 = val_f1
                 self.best_val_loss = val_loss
-                self.best_model_state = self.model.state_dict().copy()
+                self.best_model_state = {k: v.clone() for k, v in self.model.state_dict().items()}
                 early_stopping_counter = 0
                 print("发现更好的模型，保存中...")
             else:
@@ -474,7 +473,9 @@ class AdvancedBERTTrainer:
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
                 
-                loss, predictions = self.model.forward_with_loss_and_decode(input_ids, attention_mask, labels)
+                # DataParallel兼容: 获取原始模型
+                raw_model = self.model.module if hasattr(self.model, 'module') else self.model
+                loss, predictions = raw_model.forward_with_loss_and_decode(input_ids, attention_mask, labels)
                 total_loss += loss.item()
 
                 # 转换标签为可读格式

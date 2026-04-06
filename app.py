@@ -842,4 +842,5 @@ def debug_test():
     """调试测试页面"""
     return render_template('debug_test.html')
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    import os as _os
+    app.run(debug=_os.getenv('FLASK_DEBUG', 'false').lower() == 'true', port=5000)

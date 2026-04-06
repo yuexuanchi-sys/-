@@ -136,6 +136,9 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
             # 简单比较/不等 (a<0, a>2, a<10) → 太泛
             if re.fullmatch(r'[a-z]\s*[<>=]+\s*[\d.]+\s*\d*', text.strip()):
                 return False
+            # 含三位以上数字的公式是题目条件 (y=a+700x) 而非通用公式
+            if re.search(r'\d{3,}', text):
+                return False
             # 简单表达式 (a+b, a+2, a+2b) 少于5字符 → 太泛
             if len(text.strip()) < 5:
                 return False
@@ -165,13 +168,20 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
         return False
     if text.endswith('的') or text.endswith('了') or text.endswith('吗'):
         return False
+    # 以"的"开头通常是截断的句子片段
+    if text.startswith('的') or text.startswith('和') or text.startswith('与'):
+        return False
+    # 含"就"、"把"、"上"等助词的长片段是句子而非概念
+    if len(text) > 8 and any(w in text for w in ['就把', '就是', '上就', '下就']):
+        return False
     if any(w in text for w in ['你能', '请你', '你将', '你还', '下面',
                                 '上面', '举出', '利用', '按照', '仿照',
                                 '设计', '选择', '尝试', '比较', '什么',
                                 '分别', '们将', '是否', '如何', '怎样',
                                 '哪些', '能否', '它们', '可以', '应该',
                                 '已经', '学习', '学过', '学到', '学期',
-                                '我们', '这些', '那些']):
+                                '我们', '这些', '那些',
+                                '如下', '所示', '下表', '下图']):
         return False
     # 含空格的中文短语多是OCR噪声拼接
     if ' ' in text and chinese_chars < len(text) * 0.5:
@@ -206,19 +216,30 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
                 '面子', '面貌', '数码', '数据', '人口数', '人口总数',
                 '个点', '个球', '个角', '优点', '优等品', '优缺点',
                 '传播速度', '位角', '偶然', '五位数', '价格比',
+                '关系数据', '数据表示', '数学题', '数据分析',
+                '测试数据', '统计数据',
             }
             if text in non_math_with_keywords:
                 return False
             return True
         return False
 
+    # 句子片段特征检测 (>8字时启用)
+    if len(text) > 8:
+        sentence_indicators = ['的图象和', '解决问题', '的一些', '一个物体',
+                               '的关系', '的性质', '的图象', '的概念',
+                               '两个', '三个', '几个', '具有下列',
+                               '图象具有', '问题的', '和平行线的']
+        if any(ind in text for ind in sentence_indicators):
+            return False
+
     # 中等长度 (7-15字) → 必须含数学关键词
     if len(text) <= 15:
         return any(kw in text for kw in math_keywords)
 
-    # 过长 (>15字) → 很可能是句子片段，除非含多个关键词
+    # 过长 (>15字) → 很可能是句子片段，需要多个关键词
     kw_count = sum(1 for kw in math_keywords if kw in text)
-    return kw_count >= 2
+    return kw_count >= 3
 
 
 class KGGenEnhancedKnowledgeGraphBuilder:

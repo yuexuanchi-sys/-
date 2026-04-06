@@ -424,7 +424,21 @@ class KGGenEnhancedEntityExtractor:
                     label = 'O'
                 
                 # 处理实体边界（支持BIOES）
-                if label.startswith('B-') or label.startswith('S-'):
+                if label.startswith('S-'):
+                    # S-标签: 单token实体，立即结束
+                    if current_entity:
+                        entities.append(current_entity)
+                        current_entity = None
+                    entity_type = label[2:]
+                    entities.append({
+                        'text': text[start_char:end_char],
+                        'start': start_char,
+                        'end': end_char,
+                        'type': entity_type,
+                        'source': 'model',
+                        'confidence': 0.9
+                    })
+                elif label.startswith('B-'):
                     if current_entity:
                         entities.append(current_entity)
                     entity_type = label[2:]
