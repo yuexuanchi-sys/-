@@ -1,0 +1,57 @@
+{
+  "total_entities": 652,
+  "total_relations": 1575,
+  "entity_type_distribution": {
+    "CONCEPT": 608,
+    "THEOREM": 9,
+    "FORMULA": 19,
+    "METHOD": 3,
+    "EXAMPLE": 1,
+    "MODULE": 3,
+    "CHAPTER": 9
+  },
+  "relation_type_distribution": {
+    "定义": 48,
+    "推导关系": 119,
+    "包含": 748,
+    "相关概念": 471,
+    "符号表示": 66,
+    "应用": 96,
+    "前置知识": 13,
+    "属于": 12,
+    "性质": 2
+  },
+  "source_distribution_entities": {
+    "pos": 534,
+    "rule": 93,
+    "rule+context": 13,
+    "hierarchy": 12
+  },
+  "source_distribution_relations": {
+    "rule": 306,
+    "cooccurrence": 620,
+    "hierarchy": 649
+  },
+  "confidence_stats": {
+    "entities": {
+      "min": 0.6,
+      "max": 1.0,
+      "avg": 0.659739263803681
+    },
+    "relations": {
+      "min": 0.7,
+      "max": 1.0,
+      "avg": 0.8587936507936508
+    }
+  },
+  "paper_metrics": {
+    "total_entities": 652,
+    "total_relations": 1575,
+    "entity_type_count": 7,
+    "relation_type_count": 9,
+    "coverage_ratio": 0.9474,
+    "avg_node_degree": 4.88,
+    "graph_density": 0.00378,
+    "connected_components": 1
+  }
+}

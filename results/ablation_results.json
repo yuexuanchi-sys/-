@@ -1,0 +1,20 @@
+{
+  "rule_only": {
+    "entities": 27445,
+    "relations": 0,
+    "entity_types": 5,
+    "relation_types": 0,
+    "coverage": 0.9825,
+    "avg_degree": 0.0,
+    "components": 4271
+  },
+  "rule_pos_ensemble": {
+    "entities": 652,
+    "relations": 1575,
+    "entity_types": 7,
+    "relation_types": 9,
+    "coverage": 0.9474,
+    "avg_degree": 4.88,
+    "components": 1
+  }
+}

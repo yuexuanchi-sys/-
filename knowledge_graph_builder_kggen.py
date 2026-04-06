@@ -136,8 +136,8 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
             # 简单比较/不等 (a<0, a>2, a<10) → 太泛
             if re.fullmatch(r'[a-z]\s*[<>=]+\s*[\d.]+\s*\d*', text.strip()):
                 return False
-            # 含三位以上数字的公式是题目条件 (y=a+700x) 而非通用公式
-            if re.search(r'\d{3,}', text):
+            # 含两位以上数字的公式是题目条件 (y=a+700x, x+3y=34) 而非通用公式
+            if re.search(r'\d{2,}', text):
                 return False
             # 简单表达式 (a+b, a+2, a+2b) 少于5字符 → 太泛
             if len(text.strip()) < 5:
@@ -168,11 +168,14 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
         return False
     if text.endswith('的') or text.endswith('了') or text.endswith('吗'):
         return False
-    # 以"的"开头通常是截断的句子片段
+    # 以虚词开头/结尾通常是截断的句子片段
     if text.startswith('的') or text.startswith('和') or text.startswith('与'):
         return False
+    if text.endswith('的实际') or text.endswith('呈现出'):
+        return False
     # 含"就"、"把"、"上"等助词的长片段是句子而非概念
-    if len(text) > 8 and any(w in text for w in ['就把', '就是', '上就', '下就']):
+    if len(text) > 8 and any(w in text for w in ['就把', '就是', '上就', '下就',
+                                                    '呈现出', '的实际']):
         return False
     if any(w in text for w in ['你能', '请你', '你将', '你还', '下面',
                                 '上面', '举出', '利用', '按照', '仿照',
@@ -216,7 +219,7 @@ def _is_valid_math_entity(text: str, entity_type: str) -> bool:
                 '面子', '面貌', '数码', '数据', '人口数', '人口总数',
                 '个点', '个球', '个角', '优点', '优等品', '优缺点',
                 '传播速度', '位角', '偶然', '五位数', '价格比',
-                '关系数据', '数据表示', '数学题', '数据分析',
+                '关系数据', '数据表示', '数学题',
                 '测试数据', '统计数据',
             }
             if text in non_math_with_keywords:

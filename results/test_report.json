@@ -1,0 +1,42 @@
+{
+  "数据加载": {
+    "status": "PASS",
+    "elapsed": 2.72,
+    "detail": "加载 9 个文件, 总字符: 507397"
+  },
+  "文本预处理": {
+    "status": "PASS",
+    "elapsed": 0.0,
+    "detail": "文本预处理正常"
+  },
+  "NER训练数据生成(BIOES)": {
+    "status": "PASS",
+    "elapsed": 0.07,
+    "detail": "生成 2 条样本, 单句标注实体: [('勾股定理', 'THEOREM'), ('直角三角形', 'CONCEPT'), ('直角', 'CONCEPT'), ('边', 'CONCEPT'), ('边', 'CONCEPT')]"
+  },
+  "实体提取": {
+    "status": "PASS",
+    "elapsed": 1.63,
+    "detail": "提取 7 个实体, 数学相关: ['三角形', '线段', '图形', '直角三角形', '勾股定理']"
+  },
+  "关系提取": {
+    "status": "PASS",
+    "elapsed": 0.0,
+    "detail": "提取 6 个关系, 类型: {'BELONGS_TO', 'PREREQUISITE', 'CONTAINS'}, 来源: {'rule', 'cooccurrence'}"
+  },
+  "评估框架": {
+    "status": "PASS",
+    "elapsed": 0.0,
+    "detail": "NER F1=1.0, 关系P=0.5, 图节点=3"
+  },
+  "训练数据生成(完整)": {
+    "status": "PASS",
+    "elapsed": 4.79,
+    "detail": "样本: 1358, 标注分布: {'O': 1, 'S': 2, 'B': 5, 'I': 5, 'E': 5}"
+  },
+  "论文指标生成": {
+    "status": "PASS",
+    "elapsed": 0.02,
+    "detail": "覆盖率: 94.7%, Hub节点: ['第1章', '第2章', '关系式', '图形', '直线']"
+  }
+}

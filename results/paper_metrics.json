@@ -1,0 +1,298 @@
+{
+  "structural": {
+    "num_nodes": 646,
+    "num_edges": 1575,
+    "density": 0.00378,
+    "avg_degree": 4.88,
+    "max_degree": 423,
+    "min_degree": 1,
+    "degree_std": 19.58,
+    "num_connected_components": 1,
+    "num_isolated_nodes": 0,
+    "isolation_ratio": 0.0
+  },
+  "entity_types": {
+    "type_distribution": {
+      "CONCEPT": 608,
+      "THEOREM": 9,
+      "FORMULA": 19,
+      "METHOD": 3,
+      "EXAMPLE": 1,
+      "MODULE": 3,
+      "CHAPTER": 9
+    },
+    "type_proportions": {
+      "CONCEPT": 0.9325,
+      "THEOREM": 0.0138,
+      "FORMULA": 0.0291,
+      "METHOD": 0.0046,
+      "EXAMPLE": 0.0015,
+      "MODULE": 0.0046,
+      "CHAPTER": 0.0138
+    },
+    "num_types": 7,
+    "total_entities": 652
+  },
+  "relation_types": {
+    "type_distribution": {
+      "定义": 48,
+      "推导关系": 119,
+      "包含": 748,
+      "相关概念": 471,
+      "符号表示": 66,
+      "应用": 96,
+      "前置知识": 13,
+      "属于": 12,
+      "性质": 2
+    },
+    "type_proportions": {
+      "定义": 0.0305,
+      "推导关系": 0.0756,
+      "包含": 0.4749,
+      "相关概念": 0.299,
+      "符号表示": 0.0419,
+      "应用": 0.061,
+      "前置知识": 0.0083,
+      "属于": 0.0076,
+      "性质": 0.0013
+    },
+    "num_types": 9,
+    "total_relations": 1575
+  },
+  "sources": {
+    "entity_sources": {
+      "pos": 534,
+      "rule": 93,
+      "rule+context": 13,
+      "hierarchy": 12
+    },
+    "relation_sources": {
+      "rule": 306,
+      "cooccurrence": 620,
+      "hierarchy": 649
+    }
+  },
+  "confidence": {
+    "entity_confidence": {
+      "count": 652,
+      "mean": 0.6597,
+      "std": 0.1354,
+      "min": 0.6,
+      "max": 1.0,
+      "median": 0.6,
+      "q25": 0.6,
+      "q75": 0.6
+    },
+    "relation_confidence": {
+      "count": 1575,
+      "mean": 0.8588,
+      "std": 0.1355,
+      "min": 0.7,
+      "max": 1.0,
+      "median": 0.9,
+      "q25": 0.7,
+      "q75": 1.0
+    }
+  },
+  "coverage": {
+    "total_keywords": 57,
+    "covered": 54,
+    "uncovered": 3,
+    "coverage_ratio": 0.9474,
+    "covered_keywords": [
+      "有理数",
+      "整数",
+      "分数",
+      "负数",
+      "正数",
+      "数轴",
+      "绝对值",
+      "相反数",
+      "加法",
+      "减法",
+      "乘法",
+      "除法",
+      "乘方",
+      "代数式",
+      "方程",
+      "一元一次方程",
+      "几何体",
+      "棱柱",
+      "圆柱",
+      "圆锥",
+      "直线",
+      "射线",
+      "线段",
+      "角",
+      "平行线",
+      "垂直",
+      "三角形",
+      "全等三角形",
+      "勾股定理",
+      "实数",
+      "平方根",
+      "立方根",
+      "二次根式",
+      "一次函数",
+      "正比例函数",
+      "平行四边形",
+      "矩形",
+      "菱形",
+      "正方形",
+      "分式",
+      "分式方程",
+      "数据分析",
+      "中位数",
+      "众数",
+      "方差",
+      "一元二次方程",
+      "二次函数",
+      "反比例函数",
+      "相似三角形",
+      "锐角三角函数",
+      "圆",
+      "概率",
+      "投影",
+      "视图"
+    ],
+    "uncovered_keywords": [
+      "弧",
+      "圆心角",
+      "随机事件"
+    ]
+  },
+  "hubs": {
+    "top_hubs": [
+      {
+        "entity": "第1章",
+        "degree": 423,
+        "in_degree": 3,
+        "out_degree": 420
+      },
+      {
+        "entity": "第2章",
+        "degree": 194,
+        "in_degree": 3,
+        "out_degree": 191
+      },
+      {
+        "entity": "关系式",
+        "degree": 78,
+        "in_degree": 49,
+        "out_degree": 29
+      },
+      {
+        "entity": "图形",
+        "degree": 67,
+        "in_degree": 26,
+        "out_degree": 41
+      },
+      {
+        "entity": "直线",
+        "degree": 62,
+        "in_degree": 29,
+        "out_degree": 33
+      },
+      {
+        "entity": "三角形",
+        "degree": 56,
+        "in_degree": 30,
+        "out_degree": 26
+      },
+      {
+        "entity": "坐标",
+        "degree": 50,
+        "in_degree": 24,
+        "out_degree": 26
+      },
+      {
+        "entity": "数学界",
+        "degree": 43,
+        "in_degree": 22,
+        "out_degree": 21
+      },
+      {
+        "entity": "方程",
+        "degree": 41,
+        "in_degree": 21,
+        "out_degree": 20
+      },
+      {
+        "entity": "平面",
+        "degree": 40,
+        "in_degree": 18,
+        "out_degree": 22
+      },
+      {
+        "entity": "线段",
+        "degree": 39,
+        "in_degree": 20,
+        "out_degree": 19
+      },
+      {
+        "entity": "顶点",
+        "degree": 36,
+        "in_degree": 12,
+        "out_degree": 24
+      },
+      {
+        "entity": "第11章",
+        "degree": 32,
+        "in_degree": 3,
+        "out_degree": 29
+      },
+      {
+        "entity": "数据分析",
+        "degree": 31,
+        "in_degree": 12,
+        "out_degree": 19
+      },
+      {
+        "entity": "正方形",
+        "degree": 26,
+        "in_degree": 12,
+        "out_degree": 14
+      },
+      {
+        "entity": "函数",
+        "degree": 25,
+        "in_degree": 12,
+        "out_degree": 13
+      },
+      {
+        "entity": "x=8+2",
+        "degree": 24,
+        "in_degree": 18,
+        "out_degree": 6
+      },
+      {
+        "entity": "一次函数",
+        "degree": 22,
+        "in_degree": 11,
+        "out_degree": 11
+      },
+      {
+        "entity": "面积",
+        "degree": 21,
+        "in_degree": 13,
+        "out_degree": 8
+      },
+      {
+        "entity": "二次函数",
+        "degree": 20,
+        "in_degree": 12,
+        "out_degree": 8
+      }
+    ]
+  },
+  "summary": {
+    "total_entities": 652,
+    "total_relations": 1575,
+    "entity_type_count": 7,
+    "relation_type_count": 9,
+    "coverage_ratio": 0.9474,
+    "avg_node_degree": 4.88,
+    "graph_density": 0.00378,
+    "connected_components": 1
+  }
+}
