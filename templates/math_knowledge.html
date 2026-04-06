@@ -473,6 +473,12 @@
     function setGraphData(data) {
         graphData = data;
 
+        // 兼容 from/to 和 source/target 两种边格式
+        graphData.relationships.forEach(e => {
+            if (!e.source && e.from) e.source = e.from;
+            if (!e.target && e.to) e.target = e.to;
+        });
+
         // Assign physics positions using force layout
         const W = canvas.width / window.devicePixelRatio;
         const H = canvas.height / window.devicePixelRatio;
@@ -497,7 +503,7 @@
     function runForceLayout() {
         const nodes = graphData.nodes;
         const edges = graphData.relationships;
-        const iterations = 120;
+        const iterations = Math.min(120, Math.max(30, Math.floor(8000 / nodes.length)));
 
         for (let iter = 0; iter < iterations; iter++) {
             const alpha = 1 - iter / iterations;

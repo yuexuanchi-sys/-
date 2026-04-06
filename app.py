@@ -57,6 +57,8 @@ class OfflineGraphDataSource:
         return {
             'from': r['subject'],
             'to': r['object'],
+            'source': r['subject'],
+            'target': r['object'],
             'label': r['relation'],
             'title': f"{r['subject']} —{r['relation']}→ {r['object']}",
         }
